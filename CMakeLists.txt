@@ -104,6 +104,8 @@ file(DOWNLOAD "https://raw.githubusercontent.com/nlohmann/json/v3.10.5/single_in
   "${PROJECT_BINARY_DIR}/judge-headers/nlohmann/json.hpp")
 file(DOWNLOAD "https://raw.githubusercontent.com/MikeMirzayanov/testlib/6daa79fdc9c2b113be8d40f828e3dc81e67ce33d/testlib.h"
   "${PROJECT_BINARY_DIR}/judge-headers/testlib.h")
+file(DOWNLOAD "https://raw.githubusercontent.com/baluteshih/tioj-problem-tools/9db3da1b82d036750f0e660abdd9dfec0bb6abb5/files/testlib.h"
+  "${PROJECT_BINARY_DIR}/judge-headers/tioj_testlib.h")
 install(DIRECTORY "${PROJECT_BINARY_DIR}/judge-headers" DESTINATION "${TIOJ_DATA_DIR}")
 
 # library
