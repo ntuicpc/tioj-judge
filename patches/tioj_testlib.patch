@@ -1,0 +1,51 @@
+192a193,196
+> #ifdef TIOJ_NEW_SPECJUDGE
+> #include "nlohmann/json.hpp"
+> #endif
+> 
+2388a2393,2396
+> enum class TIOJMode {
+>   kOld, kNew, kPolygon,
+> } tioj_mode = TIOJMode::kPolygon;
+> 
+3106a3115,3119
+>             if (tioj_mode == TIOJMode::kOld) {
+>                 puts("0");
+>             } else if (tioj_mode == TIOJMode::kNew) {
+>                 puts(R"({"verdict":"AC"})");
+>             }
+3127a3141,3150
+>             if (tioj_mode == TIOJMode::kOld) {
+>                 printf("0\nSPECJUDGE_OVERRIDE_SCORE %lf\n", __testlib_points);
+>                 if (__testlib_points < 100) puts("SPECJUDGE_OVERRIDE_VERDICT WA");
+>             } else if (tioj_mode == TIOJMode::kNew) {
+>                 if (__testlib_points < 100) {
+>                     printf(R"({"verdict":"WA","score":%.6lf})", __testlib_points);
+>                 } else {
+>                     printf(R"({"score":%.6lf})", __testlib_points);
+>                 }
+>             }
+3190c3213
+<     halt(resultExitCode(result));
+---
+>     halt(tioj_mode == TIOJMode::kPolygon ? resultExitCode(result) : 0);
+4853a4877,4895
+>     if (argc == 7) {
+>         tioj_mode = TIOJMode::kOld;
+>         inf.init(argv[2], _input);
+>         ouf.init(argv[1], _output);
+>         ans.init(argv[3], _answer);
+>         return;
+>     }
+> 
+> #ifdef TIOJ_NEW_SPECJUDGE
+>     if (argc == 2 && std::string(argv[1]) != "--help") {
+>         tioj_mode = TIOJMode::kNew;
+>         nlohmann::json config(std::ifstream(argv[1]));
+>         inf.init(config["input_file"].get<std::string>(), _input);
+>         ouf.init(config["user_output_file"].get<std::string>(), _output);
+>         ans.init(config["answer_file"].get<std::string>(), _answer);
+>     }
+> #endif
+> 
+>     tioj_mode = TIOJMode::kPolygon;

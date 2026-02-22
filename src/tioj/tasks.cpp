@@ -156,6 +156,13 @@ struct cjail_result RunCompile(const SubmissionAndResult& sub_and_result, const 
     }
     default: __builtin_unreachable();
   }
+  if (subtask == CompileSubtask::SPECJUDGE) {
+    if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_NEW) {
+      opt.command.push_back("-DTIOJ_NEW_SPECJUDGE");
+    } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_POLYGON) {
+      opt.command.push_back("-DTESTSYS");
+    }
+  }
   for (const auto& arg : ParseAdditionalArgs(subtask, sub, input, output)) {
     opt.command.push_back(arg);
   }
@@ -271,6 +278,20 @@ struct cjail_result RunScoring(const SubmissionAndResult& sub_and_result, const 
       ScoringBoxUserCode(-1, -1, -1, sub.lang, true),
       std::to_string(stage),
     });
+  } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_POLYGON) {
+    opt.command.insert(opt.command.end(), {
+      ScoringBoxTdInput(-1, -1, -1, true),
+      ScoringBoxUserOutput(-1, -1, -1, true),
+      ScoringBoxTdOutput(-1, -1, -1, true),
+    });
+  } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_KATTIS) {
+    opt.command.insert(opt.command.end(), {
+      ScoringBoxTdInput(-1, -1, -1, true),
+      ScoringBoxTdOutput(-1, -1, -1, true),
+      ScoringBoxTempdir(-1, -1, -1, true),
+      // Kattis PPF allows additional arguments, so we use it to pass in metadata
+      ScoringBoxMetaFile(-1, -1, -1, true),
+    });
   } else {
     opt.command.push_back(ScoringBoxMetaFile(-1, -1, -1, true));
     if (sub.specjudge_type == SpecjudgeType::NORMAL) {
@@ -278,8 +299,10 @@ struct cjail_result RunScoring(const SubmissionAndResult& sub_and_result, const 
     }
   }
   opt.workdir = Workdir("/");
-  if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_OLD) {
+  if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_OLD || sub.specjudge_type == SpecjudgeType::SPECJUDGE_POLYGON) {
     opt.input = ScoringBoxMetaFile(-1, -1, -1, true);
+  } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_KATTIS) {
+    opt.input = ScoringBoxUserOutput(-1, -1, -1, true);
   } else {
     opt.input = "/dev/null";
   }

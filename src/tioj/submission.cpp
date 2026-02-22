@@ -535,15 +535,19 @@ bool SetupScoring(SubmissionAndResult& sub_and_result, const TaskEntry& task) {
   return true;
 }
 
+inline void SetACOrContinue(bool last_stage, SubmissionResult::TestdataResult& td_result) {
+  if (last_stage) {
+    td_result.verdict = Verdict::AC;
+    td_result.score = 100'000'000;
+  } // else: continue (NUL)
+}
+
 void ReadOldSpecjudgeResult(const fs::path& output_path, bool last_stage, SubmissionResult::TestdataResult& td_result) {
   int x;
   std::ifstream fin(output_path);
   bool success = bool(fin >> x); // x would be set to 0 if failed, so this is necessary
   if (success && x == 0) {
-    if (last_stage) {
-      td_result.verdict = Verdict::AC;
-      td_result.score = 100'000'000;
-    } // else: continue (NUL)
+    SetACOrContinue(last_stage, td_result);
     std::string cmd;
     bool score_overriden = false;
     while (fin >> cmd) {
@@ -629,6 +633,53 @@ void ReadNewSpecjudgeResult(const fs::path& output_path, SubmissionResult::Testd
   if (!has_message) td_result.message_type = td_result.message = "";
 }
 
+void ReadPolygonSpecjudgeResult(int code, const fs::path& output_path, bool last_stage,
+                                SubmissionResult::TestdataResult& td_result) {
+  if (code < 50 && code != 0 && code != 7) {
+    td_result.verdict = Verdict::WA;
+    return;
+  }
+
+  SetACOrContinue(last_stage, td_result);
+  if (code == 7) {
+    long double score = 0;
+    std::ifstream(output_path) >> score;
+    td_result.score = NormalizeScore(score);
+  } else if (code >= 50) {
+    td_result.score = (code - 50) * (100'000'000 / 200);
+  }
+  if (td_result.score < 100'000'000) td_result.verdict = Verdict::WA;
+}
+
+void ReadSpecjudgeResult(const Submission& sub, const siginfo_t& info, bool last_stage,
+                         const fs::path& output_path, SubmissionResult::TestdataResult& td_result) {
+  if (!fs::is_regular_file(output_path) || info.si_code != CLD_EXITED ||
+      (sub.specjudge_type != SpecjudgeType::SPECJUDGE_POLYGON && info.si_status != 0) ||
+      (sub.specjudge_type == SpecjudgeType::SPECJUDGE_KATTIS && info.si_status != 42 && info.si_status != 43)) {
+    // skip remaining stages
+    if (td_result.verdict == Verdict::NUL) td_result.verdict = Verdict::WA;
+    return;
+  }
+
+  if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_OLD) {
+    ReadOldSpecjudgeResult(output_path, last_stage, td_result);
+  } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_POLYGON) {
+    ReadPolygonSpecjudgeResult(info.si_status, output_path, last_stage, td_result);
+  } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_KATTIS) {
+    if (info.si_status == 42) {
+      SetACOrContinue(last_stage, td_result);
+    } else {
+      td_result.verdict = Verdict::WA;
+    }
+  } else { // SPECJUDGE_NEW || NORMAL
+    try {
+      ReadNewSpecjudgeResult(output_path, td_result);
+    } catch (nlohmann::json::exception&) {
+      // WA
+    }
+  }
+}
+
 void FinalizeScoring(SubmissionAndResult& sub_and_result, const TaskEntry& task,
                      const struct cjail_result& cjail_res, bool skipped) {
   const Submission& sub = sub_and_result.sub;
@@ -644,19 +695,8 @@ void FinalizeScoring(SubmissionAndResult& sub_and_result, const TaskEntry& task,
   // default: WA or keep verdict (if TLE etc.) for last_stage,
   //          continue otherwise
   td_result.score = 0;
-  if (skipped) {
-    // skipped because of TLE/MLE/etc in old-style; do nothing
-  } else if (!fs::is_regular_file(output_path) || cjail_res.info.si_status != 0) {
-    // skip remaining stages
-    if (td_result.verdict == Verdict::NUL) td_result.verdict = Verdict::WA;
-  } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_OLD) {
-    ReadOldSpecjudgeResult(output_path, last_stage, td_result);
-  } else {
-    try {
-      ReadNewSpecjudgeResult(output_path, td_result);
-    } catch (nlohmann::json::exception&) {
-      // WA
-    }
+  if (!skipped) {
+    ReadSpecjudgeResult(sub, cjail_res.info, last_stage, output_path, td_result);
   }
   if (!last_stage && td_result.verdict != Verdict::NUL) {
     td_result.skip_stage = true;
@@ -1009,8 +1049,7 @@ bool PushSubmission(Submission&& sub, size_t max_queue) {
     InsertTaskList(std::move(compile));
   }
 
-  if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_OLD ||
-      sub.specjudge_type == SpecjudgeType::SPECJUDGE_NEW) {
+  if (sub.specjudge_type != SpecjudgeType::NORMAL) {
     TaskEntry compile(id, {TaskType::COMPILE, (int)CompileSubtask::SPECJUDGE}, priority);
     for (auto& i : scorings) Link(compile, i[0]);
     if (executes.empty()) Link(compile, summary);
