@@ -14,6 +14,7 @@ class WsClient {
   using Handle = websocketpp::connection_hdl;
   using TLSContext = boost::asio::ssl::context;
   using TLSContextPtr = std::shared_ptr<TLSContext>;
+  using Response = websocketpp::http::parser::response;
  private:
   std::variant<NoTLSClient, TLSClient> client_;
   Thread thr_;
@@ -50,7 +51,9 @@ class WsClient {
   void OnOpen_(Handle hdl) {
     connected_ = true;
     hdl_ = hdl;
-    OnOpen();
+    std::visit([&](auto& client) {
+      OnOpen(client.get_con_from_hdl(hdl)->get_response());
+    }, client_);
   }
   void OnFail_(Handle) {
     OnFail();
@@ -102,7 +105,7 @@ class WsClient {
 
   // Note: if you want to call connection operations such as Connect() in these functions,
   //   create a thread to do it; Send() can be called directly
-  virtual void OnOpen() {}
+  virtual void OnOpen(Response) {}
   virtual void OnFail() {}
   virtual void OnClose() {}
   virtual void OnMessage(const std::string& str) {}

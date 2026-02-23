@@ -3,8 +3,6 @@
 #include <list>
 #include <mutex>
 #include <chrono>
-#include <memory>
-#include <unordered_set>
 #include <condition_variable>
 
 #include <zstd.h>
@@ -167,11 +165,12 @@ class TIOJClient : public WsClient {
   }
  public:
   TIOJClient() : WsClient("ws" + kTIOJUrl.substr(4) + "/cable?" + httplib::detail::params_to_query_str({
-      {"key", kTIOJKey}, {"version", kVersionCode}})) {}
+      {"key", kTIOJKey}, {"version", kVersionCode}})), server_version("3.4.0") {}
 
   double last_ping = 0;
+  std::string server_version;
 
-  void OnOpen() override {
+  void OnOpen(Response resp) override {
     spdlog::info("Connected to server websocket");
     last_ping = MonotonicTimestamp();
     Request req{};
@@ -202,7 +201,14 @@ class TIOJClient : public WsClient {
       data = json::parse(msg);
       last_ping = MonotonicTimestamp();
       spdlog::debug("Message from server: {}", msg);
-      if (data.contains("type")) return; // confirm_subscription or ping
+      if (data.contains("type")) {
+        // welcome, confirm_subscription or ping
+        if (data["type"] == "welcome") {
+          server_version = data.value("version", "3.4.0");
+          spdlog::info("Server version: {}", server_version);
+        }
+        return;
+      }
       msg_type = data["message"]["type"].get<std::string>();
     } catch (json::exception& err) {
       spdlog::warn("JSON decoding error: {}", err.what());
