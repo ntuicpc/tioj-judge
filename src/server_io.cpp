@@ -49,6 +49,8 @@ Database db;
 
 /// --- websocket client ---
 constexpr double kUniqueReqMinInterval = 0.5;
+constexpr double kFetchMinInterval = 0.2;
+static_assert(kFetchMinInterval <= kUniqueReqMinInterval);
 
 // outgoing requests
 struct Request {
@@ -69,7 +71,11 @@ struct Request {
     }
     return ret.dump();
   }
+
+  static constexpr long kFetchKey = -1;
+  static constexpr long kReportQueuedKey = -2;
 };
+
 
 std::set<std::pair<double, long>> unsent_timestamps;
 std::unordered_map<long, double> unique_timestamp_map;
@@ -243,7 +249,11 @@ void RequestLoop() {
     while (request_queue.size()) {
       Request req = std::move(request_queue.front());
       if (req.is_unique) {
-        unique_timestamp_map[req.key] = MonotonicTimestamp();
+        long ts = MonotonicTimestamp();
+        if (req.key == Request::kFetchKey) {
+          ts -= kUniqueReqMinInterval - kFetchMinInterval; // fetch can be more frequent
+        }
+        unique_timestamp_map[req.key] = ts;
       } else if (req.force_pop) {
         unique_timestamp_map.erase(req.key);
       }
@@ -625,7 +635,7 @@ nlohmann::json TdResultsJSON(const SubmissionResult& res, int subtask = -1) {
 void TryFetchSubmission() {
   Request req{};
   req.is_unique = true;
-  req.key = -1;
+  req.key = Request::kFetchKey;
   req.action = "fetch_submission";
   PushRequest(std::move(req));
 }
@@ -682,7 +692,7 @@ void SendQueuedSubmissions(bool send_if_empty) {
   nlohmann::json data{{"submission_ids", ids}};
   Request req{};
   req.is_unique = true;
-  req.key = -2;
+  req.key = Request::kReportQueuedKey;
   req.action = "report_queued";
   req.body = std::move(data);
   PushRequest(std::move(req));
