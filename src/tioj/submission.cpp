@@ -294,7 +294,7 @@ void FinalizeCompile(SubmissionAndResult& sub_and_result, const TaskEntry& task,
       !fs::is_regular_file(CompileBoxOutput(id, subtask, lang))) {
     Verdict verd;
     if (subtask != CompileSubtask::USERPROG) {
-      verd = Verdict::ER;
+      verd = Verdict::JCE;
     } else if (cjail_res.timekill || cjail_res.oomkill > 0) {
       verd = Verdict::CLE;
     } else {
@@ -327,12 +327,12 @@ void FinalizeCompile(SubmissionAndResult& sub_and_result, const TaskEntry& task,
       }
       case CompileSubtask::PROBPROG: [[fallthrough]];
       case CompileSubtask::SPECJUDGE: {
-        sub_res.er_message = std::move(message);
-        if (sub.reporter.ReportERMessage) sub.reporter.ReportERMessage(sub, sub_res);
+        sub_res.jce_message = std::move(message);
+        if (sub.reporter.ReportJCEMessage) sub.reporter.ReportJCEMessage(sub, sub_res);
         break;
       }
       case CompileSubtask::SUMMARY: {
-        if (sub_res.er_message.empty()) sub_res.er_message = std::move(message);
+        if (sub_res.jce_message.empty()) sub_res.jce_message = std::move(message);
         // do nothing
         break;
       }
@@ -653,11 +653,13 @@ void ReadPolygonSpecjudgeResult(int code, const fs::path& output_path, bool last
 
 void ReadSpecjudgeResult(const Submission& sub, const siginfo_t& info, bool last_stage,
                          const fs::path& output_path, SubmissionResult::TestdataResult& td_result) {
+  Verdict jre_verdict = sub.specjudge_re_as_wa ? Verdict::WA : Verdict::JRE;
   if (!fs::is_regular_file(output_path) || info.si_code != CLD_EXITED ||
       (sub.specjudge_type != SpecjudgeType::SPECJUDGE_POLYGON && info.si_status != 0) ||
+      (sub.specjudge_type == SpecjudgeType::SPECJUDGE_POLYGON && info.si_status == 3) ||
       (sub.specjudge_type == SpecjudgeType::SPECJUDGE_KATTIS && info.si_status != 42 && info.si_status != 43)) {
-    // skip remaining stages
-    if (td_result.verdict == Verdict::NUL) td_result.verdict = Verdict::WA;
+    // specjudge failed unexpectedly
+    if (td_result.verdict == Verdict::NUL) td_result.verdict = jre_verdict;
     return;
   }
 
@@ -668,8 +670,10 @@ void ReadSpecjudgeResult(const Submission& sub, const siginfo_t& info, bool last
   } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_KATTIS) {
     if (info.si_status == 42) {
       SetACOrContinue(last_stage, td_result);
-    } else {
+    } else if (info.si_status == 43) {
       td_result.verdict = Verdict::WA;
+    } else {
+      if (td_result.verdict == Verdict::NUL) td_result.verdict = jre_verdict;
     }
   } else { // SPECJUDGE_NEW || NORMAL
     try {
@@ -744,7 +748,7 @@ bool SetupSummary(SubmissionAndResult& sub_and_result, const TaskEntry& task) {
       if ((int)res.verdict < (int)td.verdict) res.verdict = td.verdict;
     }
   }
-  if (sub.summary_type == SummaryType::NONE || res.verdict == Verdict::ER) return false;
+  if (sub.summary_type == SummaryType::NONE || res.verdict == Verdict::JCE) return false;
 
   long id = sub.submission_internal_id;
   CreateDirs(Workdir(SummaryBoxPath(id)), fs::perms::all);
@@ -831,14 +835,14 @@ void FinalizeSummary(SubmissionAndResult& sub_and_result, const TaskEntry& task,
   if (!skipped) {
     auto output_path = SummaryBoxOutput(id);
     if (!fs::is_regular_file(output_path) || cjail_res.info.si_status != 0) {
-      res.verdict = Verdict::WA;
+      res.verdict = Verdict::JRE;
       res.total_memory = 0;
       res.total_time = 0;
     } else {
       try {
         ReadSummaryResult(output_path, res);
       } catch (nlohmann::json::exception&) {
-        res.verdict = Verdict::WA;
+        res.verdict = Verdict::JRE;
         res.total_memory = 0;
         res.total_time = 0;
       }

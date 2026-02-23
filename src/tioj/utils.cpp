@@ -78,6 +78,7 @@ Verdict AbrToVerdict(const std::string& str, bool runtime_only) {
     if (str == kVerdictAbrTable[i]) return (Verdict)i;
   }
   if (runtime_only) return Verdict::NUL;
+  if (str == "ER") return Verdict::JCE; // for backward-compatibility
   for (int i = (int)Verdict::CE; i <= (int)Verdict::JE; i++) {
     if (str == kVerdictAbrTable[i]) return (Verdict)i;
   }

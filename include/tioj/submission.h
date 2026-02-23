@@ -81,11 +81,12 @@ enum class Compiler {
   X(OLE, "OLE", "Output Limit Exceeded") \
   X(RE, "RE", "Runtime Error (exited with nonzero status)") \
   X(SIG, "SIG", "Runtime Error (exited with signal)") \
+  X(JRE, "JRE", "Judge Runtime Error") \
   X(EE, "EE", "Execution Error") \
   /* verdicts after compilation */ \
   X(CE, "CE", "Compile Error") \
   X(CLE, "CLE", "Compilation Limit Exceeded") \
-  X(ER, "ER", "Judge Compilation Error") \
+  X(JCE, "JCE", "Judge Compilation Error") \
   X(JE, "JE", "Judge Error")
 enum class Verdict {
 #define X(name, abr, desc) name,
@@ -123,6 +124,8 @@ class Submission {
   std::set<int> problem_prog_stages;
   bool judge_between_stages;
   bool judge_abnormally_terminated;
+  // replace specjudge RE with WA instead of JRE (summary RE are always JRE)
+  bool specjudge_re_as_wa;
   bool sandbox_strict; // false for backward-compatability
   int process_limit;
   std::vector<std::string> default_scoring_args;
@@ -149,7 +152,7 @@ class Submission {
     std::function<void(const Submission&, const SubmissionResult&)> ReportOverallResult;
     std::function<void(const Submission&, const SubmissionResult&, int subtask, int stage)> ReportScoringResult;
     std::function<void(const Submission&, const SubmissionResult&)> ReportCEMessage;
-    std::function<void(const Submission&, const SubmissionResult&)> ReportERMessage;
+    std::function<void(const Submission&, const SubmissionResult&)> ReportJCEMessage;
     std::function<void(const Submission&, const SubmissionResult&, size_t queue_size_before_pop)> ReportFinalized;
   };
   Reporter reporter; // callbacks for result reporting
@@ -172,6 +175,7 @@ class Submission {
       stages(1),
       judge_between_stages(false),
       judge_abnormally_terminated(false),
+      specjudge_re_as_wa(true),
       sandbox_strict(false),
       process_limit(1),
       report_intermediate_stage(false),
@@ -198,7 +202,7 @@ class SubmissionResult {
   // overall result
   Verdict verdict;
   int64_t total_memory, total_time, total_score; // KiB, us, 10^(-6)
-  std::string ce_message, er_message;
+  std::string ce_message, jce_message;
 
   SubmissionResult() : verdict(Verdict::NUL), total_memory(0), total_time(0), total_score(0) {}
 };

@@ -153,11 +153,22 @@ void OneSubmissionThread(nlohmann::json&& data) {
     return;
   }
   if (CurrentSubmissionQueueSize() + 1 < kMaxQueue) TryFetchSubmission();
-  if (!DealOneSubmission(std::move(data))) {
+  bool success = false;
+  try {
+    success = DealOneSubmission(std::move(data));
+  } catch (...) {}
+  if (!success) {
     // send JE
     SendStatus(submission_id, VerdictToAbr(Verdict::JE));
     TryFetchSubmission();
   }
+}
+
+// backward compat: JCE -> ER for < 3.5.0
+bool jce_to_er = true;
+inline std::string VerdictToAbrCompat(Verdict verdict) {
+  if (jce_to_er && verdict == Verdict::JCE) return "ER";
+  return VerdictToAbr(verdict);
 }
 
 // websocket class
@@ -212,6 +223,17 @@ class TIOJClient : public WsClient {
         if (data["type"] == "welcome") {
           server_version = data.value("version", "3.4.0");
           spdlog::info("Server version: {}", server_version);
+          int major_version = 3, minor_version = 4;
+          try {
+            size_t first_dot = server_version.find('.');
+            size_t second_dot = server_version.find('.', first_dot + 1);
+            major_version = std::stoi(server_version.substr(0, first_dot));
+            minor_version = std::stoi(server_version.substr(first_dot + 1, second_dot - first_dot - 1));
+          } catch (...) {
+            spdlog::error("Invalid server version, disconnecting");
+            Close();
+          }
+          jce_to_er = std::make_pair(major_version, minor_version) < std::make_pair(3, 5);
         }
         return;
       }
@@ -280,7 +302,7 @@ Submission::Reporter server_reporter = {
   .ReportScoringResult = [](const Submission& sub, const SubmissionResult& res, int subtask, int) {
     SendResult(sub, res, subtask);
   },
-  // no ReportCE/ERMessage; ReportOverallResult will send the message
+  // no ReportCE/JCEMessage; ReportOverallResult will send the message
   // we do this because it is possible that a submission gets both CE and ER message,
   //  so it is better to send it after completion
   .ReportFinalized = [](const Submission&, const SubmissionResult&, size_t queue_size_before_pop) {
@@ -600,7 +622,7 @@ bool DealOneSubmission(nlohmann::json&& data) {
 nlohmann::json OneTdJSON(const SubmissionResult::TestdataResult& nowtd, int position) {
   nlohmann::json tddata{
       {"position", position},
-      {"verdict", VerdictToAbr(nowtd.verdict)},
+      {"verdict", VerdictToAbrCompat(nowtd.verdict)},
       {"time", nowtd.time},
       {"rss", nowtd.rss},
       {"score", nowtd.score}};
@@ -653,7 +675,7 @@ void SendResult(const Submission& sub, const SubmissionResult& res, int subtask)
 void SendFinalResult(const Submission& sub, const SubmissionResult& res) {
   nlohmann::json data{
     {"submission_id", sub.submission_id},
-    {"verdict", VerdictToAbr(res.verdict)},
+    {"verdict", VerdictToAbrCompat(res.verdict)},
     {"score", res.total_score},
     {"total_time", res.total_time},
     {"total_memory", res.total_memory}
@@ -663,8 +685,8 @@ void SendFinalResult(const Submission& sub, const SubmissionResult& res) {
   }
   if (res.verdict == Verdict::CE || res.verdict == Verdict::CLE) {
     // nothing
-  } else if (res.verdict == Verdict::ER) {
-    data["message"] = res.er_message;
+  } else if (res.verdict == Verdict::JCE) {
+    data["message"] = res.jce_message;
   } else {
     data["td_results"] = TdResultsJSON(res);
   }
