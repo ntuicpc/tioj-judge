@@ -125,7 +125,7 @@ target_compile_definitions(tioj-judge PRIVATE HASKELL_PROCESS_LIMIT=${HASKELL_PR
 target_link_libraries(
     tioj-judge libtioj spdlog::spdlog tortellini
     httplib::httplib ${OPENSSL_LIBRARIES} zstd
-    sqlite_orm::sqlite_orm argparse::argparse)
+    sqlite_orm::sqlite_orm argparse::argparse jitterentropy)
 install(TARGETS tioj-judge DESTINATION bin)
 
 # testing
@@ -136,6 +136,7 @@ if(TIOJ_BUILD_TESTS)
 
   file(GLOB TEST_SRC "test/*.cpp" "test/*.h")
   add_executable(judge-test ${TEST_SRC})
+  target_compile_definitions(judge-test PRIVATE HASKELL_PROCESS_LIMIT=${HASKELL_PROCESS_LIMIT})
   target_link_libraries(judge-test gtest_main libtioj spdlog::spdlog)
 
   include(GoogleTest)
