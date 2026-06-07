@@ -148,9 +148,17 @@ CJailCtxClass SandboxOptions::ToCJailCtx() const {
     struct jail_mount_ctx& mnt_ctx = ret.mnt_buf_.back();
     ret.str_buf_.push_back("bind");
     mnt_ctx.type = ret.str_buf_.back().data();
-    mnt_ctx.source = mnt_ctx.target = i.data();
-    mnt_ctx.fstype = mnt_ctx.data = nullptr;
     mnt_ctx.flags = 0;
+    if (size_t offset = i.find('\0'); offset != std::string::npos) {
+      mnt_ctx.source = i.data();
+      mnt_ctx.target = i.data() + (offset + 1);
+      if (size_t offset2 = i.find('\0', offset + 1); offset2 != std::string::npos) {
+        if (i.substr(offset2 + 1) == "rw") mnt_ctx.flags |= JAIL_MNT_RW;
+      }
+    } else {
+      mnt_ctx.source = mnt_ctx.target = i.data();
+    }
+    mnt_ctx.fstype = mnt_ctx.data = nullptr;
     mnt_list_add(ret.mnt_list_, &mnt_ctx);
   }
   ctx.mount_cfg = ret.mnt_list_;

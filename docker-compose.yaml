@@ -1,0 +1,12 @@
+services:
+  judge:
+    build:
+      context: ./
+    environment:
+      TIOJ_URL: "http://localhost:3000"
+      TIOJ_KEY: $FETCH_KEY
+    tmpfs:
+      - /tmp:exec
+    privileged: true
+    network_mode: host
+    pid: host

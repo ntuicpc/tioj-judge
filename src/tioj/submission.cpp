@@ -59,6 +59,7 @@ nlohmann::json SubmissionAndResult::TestdataMeta(int subtask, int stage) const {
     {"current_time_us", td_result.time},
     {"message_type", td_result.message_type},
     {"message", td_result.message},
+    {"tempdir", ScoringBoxTempdir(-1, -1, -1, true)},
     {"limits", {
       {"time_us", lim.time},
       {"vss_kib", lim.vss},
@@ -112,6 +113,17 @@ nlohmann::json SubmissionAndResult::SummaryMeta() const {
     {"testdata", testdata},
     {"subtask_scores", subtask_scores},
   };
+}
+
+std::string SubmissionAndResult::TestdataMetaOld(int subtask) const {
+  const SubmissionResult::TestdataResult& td_result = result.td_results[subtask];
+  std::stringstream ss;
+  ss << (td_result.verdict == Verdict::NUL ? "NONE" : VerdictToAbr(td_result.verdict)) << "\n"
+     << subtask << "\n"
+     << td_result.time << "\n"
+     << td_result.vss << "\n"
+     << td_result.rss << "\n";
+  return ss.str();
 }
 
 namespace {
@@ -201,6 +213,7 @@ inline Compiler GetLang(const Submission& sub, CompileSubtask subtask) {
     case CompileSubtask::USERPROG: return sub.lang;
     case CompileSubtask::SPECJUDGE: return sub.specjudge_lang;
     case CompileSubtask::SUMMARY: return sub.summary_lang;
+    case CompileSubtask::PROBPROG: return sub.problem_prog_lang;
   }
   __builtin_unreachable();
 }
@@ -227,6 +240,10 @@ bool SetupCompile(const SubmissionAndResult& sub_and_result, const TaskEntry& ta
       Copy(SubmissionSummaryCode(id), code_dest, kPerm666);
       break;
     }
+    case CompileSubtask::PROBPROG: {
+      Copy(SubmissionProblemProgCode(id), code_dest, kPerm666);
+      break;
+    }
   }
   switch (subtask) { // copy other dependencies
     case CompileSubtask::USERPROG: {
@@ -241,6 +258,7 @@ bool SetupCompile(const SubmissionAndResult& sub_and_result, const TaskEntry& ta
       }
       break;
     }
+    case CompileSubtask::PROBPROG: [[fallthrough]];
     case CompileSubtask::SPECJUDGE: [[fallthrough]];
     case CompileSubtask::SUMMARY: {
       fs::path src = SpecjudgeHeadersPath();
@@ -307,6 +325,7 @@ void FinalizeCompile(SubmissionAndResult& sub_and_result, const TaskEntry& task,
         if (sub.reporter.ReportCEMessage) sub.reporter.ReportCEMessage(sub, sub_res);
         break;
       }
+      case CompileSubtask::PROBPROG: [[fallthrough]];
       case CompileSubtask::SPECJUDGE: {
         sub_res.er_message = std::move(message);
         if (sub.reporter.ReportERMessage) sub.reporter.ReportERMessage(sub, sub_res);
@@ -338,17 +357,31 @@ bool SetupExecute(SubmissionAndResult& sub_and_result, const TaskEntry& task) {
   if (stage > 0 && (td_result.skip_stage || td_result.verdict != Verdict::NUL)) return false;
   auto workdir = Workdir(ExecuteBoxPath(id, subtask, stage));
   CreateDirs(workdir);
+
+  bool is_problem_prog_stage = sub.problem_prog_stages.count(stage);
   if (!sub.sandbox_strict) { // for non-strict: mount a tmpfs to limit overall filesize
     // TODO FEATURE(io-interactive): create FIFOs outside of workdir by hardlink
+    auto compiled =
+      is_problem_prog_stage 
+      ? CompileBoxOutput(id, CompileSubtask::PROBPROG, sub.problem_prog_lang)
+      : CompileBoxOutput(id, CompileSubtask::USERPROG, sub.lang);
     long tmpfs_size_kib =
-      (fs::file_size(CompileBoxOutput(id, CompileSubtask::USERPROG, sub.lang)) / 4096 + 1) * 4 +
+      (fs::file_size(compiled) / 4096 + 1) * 4 +
       (fs::file_size(sub.testdata[subtask].input_file) / 4096 + 1) * 4 +
       std::min(sub.testdata[subtask].output * 2, kMaxOutput);
     MountTmpfs(workdir, tmpfs_size_kib);
   }
-  auto prog = ExecuteBoxProgram(id, subtask, stage, sub.lang);
-  Copy(CompileBoxOutput(id, CompileSubtask::USERPROG, sub.lang),
-       prog, ExecuteBoxProgramPerm(sub.lang, sub.sandbox_strict));
+
+  if (is_problem_prog_stage) {
+    auto prog = ExecuteBoxProgram(id, subtask, stage, sub.problem_prog_lang);
+    Copy(CompileBoxOutput(id, CompileSubtask::PROBPROG, sub.problem_prog_lang),
+         prog, ExecuteBoxProgramPerm(sub.problem_prog_lang, sub.sandbox_strict));
+  } else {
+    auto prog = ExecuteBoxProgram(id, subtask, stage, sub.lang);
+    Copy(CompileBoxOutput(id, CompileSubtask::USERPROG, sub.lang),
+         prog, ExecuteBoxProgramPerm(sub.lang, sub.sandbox_strict));
+  }
+
   auto input_file = ExecuteBoxInput(id, subtask, stage, sub.sandbox_strict);
   if (sub.sandbox_strict) {
     CreateDirs(ExecuteBoxTdStrictPath(id, subtask, stage), fs::perms::owner_all); // 700
@@ -452,9 +485,8 @@ bool SetupScoring(SubmissionAndResult& sub_and_result, const TaskEntry& task) {
   auto& td_result = res.td_results[subtask];
   // if specjudge demends skip, skip anyway
   if (td_result.skip_stage) return false;
-  // if already TLE/MLE/etc, do not invoke old-style special judge
-  if (td_result.verdict != Verdict::NUL &&
-      sub.specjudge_type != SpecjudgeType::SPECJUDGE_NEW) {
+  // if already TLE/MLE/etc, do not invoke judge when configured to do so
+  if (td_result.verdict != Verdict::NUL && !sub.judge_abnormally_terminated) {
     FinalizeScoring(sub_and_result, task, {}, true);
     return false;
   }
@@ -486,9 +518,19 @@ bool SetupScoring(SubmissionAndResult& sub_and_result, const TaskEntry& task) {
     Copy(sub.testdata[subtask].input_file, ScoringBoxTdInput(id, subtask, stage), kPerm666);
     Copy(sub.testdata[subtask].answer_file, ScoringBoxTdOutput(id, subtask, stage), kPerm666);
   }
+  // tempdir
+  if (!sub.judge_between_stages || stage == 0) {
+    CreateDirs(ScoringBoxTempdir(id, subtask, stage), fs::perms::all);
+  } else {
+    Move(ScoringBoxTempdir(id, subtask, stage - 1), ScoringBoxTempdir(id, subtask, stage));
+  }
   { // write meta file
     std::ofstream fout(ScoringBoxMetaFile(id, subtask, stage));
-    fout << sub_and_result.TestdataMeta(subtask, stage).dump(-1, ' ', false, nlohmann::json::error_handler_t::ignore);
+    if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_OLD) {
+      fout << sub_and_result.TestdataMetaOld(subtask);
+    } else {
+      fout << sub_and_result.TestdataMeta(subtask, stage).dump(-1, ' ', false, nlohmann::json::error_handler_t::ignore);
+    }
   }
   return true;
 }
@@ -515,6 +557,21 @@ void ReadOldSpecjudgeResult(const fs::path& output_path, bool last_stage, Submis
         if (fin >> cmd) {
           td_result.verdict = AbrToVerdict(cmd, true);
           if (!score_overriden && td_result.verdict == Verdict::AC) td_result.score = 100'000'000;
+        }
+      } else if (cmd == "SPECJUDGE_OVERRIDE_TIME_US") {
+        long time_us;
+        if (fin >> time_us) {
+          td_result.time = time_us;
+        }
+      } else if (cmd == "SPECJUDGE_OVERRIDE_VSS_KIB") {
+        long vss_kib;
+        if (fin >> vss_kib) {
+          td_result.vss = vss_kib;
+        }
+      } else if (cmd == "SPECJUDGE_OVERRIDE_RSS_KIB") {
+        long rss_kib;
+        if (fin >> rss_kib) {
+          td_result.rss = rss_kib;
         }
       } else {
         break;
@@ -618,8 +675,12 @@ void FinalizeScoring(SubmissionAndResult& sub_and_result, const TaskEntry& task,
   }
 
   // remove testdata-related files
-  if (last_stage) RemoveAll(ExecuteBoxPath(id, subtask, sub.stages - 1));
-  if (!skipped) RemoveAll(ScoringBoxPath(id, subtask, stage));
+  if (last_stage) {
+    RemoveAll(ExecuteBoxPath(id, subtask, sub.stages - 1));
+    if (!skipped) RemoveAll(ScoringBoxPath(id, subtask, sub.stages - 1));
+  }
+  if (sub.judge_between_stages && stage > 0) RemoveAll(ScoringBoxPath(id, subtask, stage - 1), true);
+
   if (!cancelled_list.count(id)) {
     spdlog::info("Scoring {}: id={} subtask={} verdict={} score={} time={} vss={} rss={}",
                  skipped ? "skipped" : "finished", id, subtask, VerdictToAbr(td_result.verdict),
@@ -926,12 +987,28 @@ bool PushSubmission(Submission&& sub, size_t max_queue) {
     }
     Link(scorings[i].back(), summary);
   }
-  {
+
+  int first_non_prob_stage = -1;
+  int first_prob_stage = sub.problem_prog_stages.empty() ? -1 : *sub.problem_prog_stages.begin();
+  for (int i = 0; i < sub.stages; i++) {
+    if (sub.problem_prog_stages.count(i) == 0) {
+      first_non_prob_stage = i;
+      break;
+    }
+  }
+  if (first_non_prob_stage != -1) {
     TaskEntry compile(id, {TaskType::COMPILE, (int)CompileSubtask::USERPROG}, priority);
-    for (auto& i : executes) Link(compile, i[0]);
+    for (auto& i : executes) Link(compile, i[first_non_prob_stage]);
     if (executes.empty()) Link(compile, summary);
     InsertTaskList(std::move(compile));
   }
+  if (first_prob_stage != -1) {
+    TaskEntry compile(id, {TaskType::COMPILE, (int)CompileSubtask::PROBPROG}, priority);
+    for (auto& i : executes) Link(compile, i[first_prob_stage]);
+    if (executes.empty()) Link(compile, summary);
+    InsertTaskList(std::move(compile));
+  }
+
   if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_OLD ||
       sub.specjudge_type == SpecjudgeType::SPECJUDGE_NEW) {
     TaskEntry compile(id, {TaskType::COMPILE, (int)CompileSubtask::SPECJUDGE}, priority);

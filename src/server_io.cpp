@@ -317,6 +317,7 @@ class TempDirectory { // RAII tempdir
  public:
   const fs::path& Path() const { return path_; }
   fs::path UserCodePath() const { return path_ / "code"; }
+  fs::path ProbProgPath() const { return path_ / "probprog"; }
   fs::path SpecjudgePath() const { return path_ / "sjcode"; }
   fs::path InterlibPath() const { return path_ / "interlib"; }
   fs::path InterlibImplPath() const { return path_ / "interlib_impl"; }
@@ -406,6 +407,13 @@ bool DealOneSubmission(nlohmann::json&& data) {
     sub.problem_id = problem["id"].get<int>();
     sub.sandbox_strict = problem["strict_mode"].get<bool>();
     sub.stages = problem["num_stages"].get<int>();
+
+    sub.problem_prog_stages = problem.value<std::set<int>>("problem_prog_stages", {});
+    if (sub.problem_prog_stages.size() > 0) {
+      sub.problem_prog_lang = GetCompiler(problem["problem_prog_compiler"].get<std::string>());
+      std::ofstream(tempdir.ProbProgPath()) << problem["problem_prog_code"].get<std::string>();
+    }
+
     sub.specjudge_type = (SpecjudgeType)problem["specjudge_type"].get<int>();
     if (sub.specjudge_type == SpecjudgeType::NORMAL) {
       sub.default_scoring_args = problem["default_scoring_args"].get<std::vector<std::string>>();
@@ -414,12 +422,16 @@ bool DealOneSubmission(nlohmann::json&& data) {
       sub.judge_between_stages = problem["judge_between_stages"].get<bool>();
       std::ofstream(tempdir.SpecjudgePath()) << problem["sjcode"].get<std::string>();
       sub.specjudge_compile_args = problem["specjudge_compile_args"].get<std::string>();
+      sub.judge_abnormally_terminated = problem.value<bool>(
+          "judge_abnormally_terminated", sub.specjudge_type == SpecjudgeType::SPECJUDGE_NEW);
     }
+
     sub.interlib_type = (InterlibType)problem["interlib_type"].get<int>();
     if (sub.interlib_type != InterlibType::NONE) {
       std::ofstream(tempdir.InterlibPath()) << problem["interlib"].get<std::string>();
       std::ofstream(tempdir.InterlibImplPath()) << problem["interlib_impl"].get<std::string>();
     }
+
     sub.summary_type = (SummaryType)problem.value<int>("summary_type", 0);
     if (sub.summary_type != SummaryType::NONE) {
       sub.summary_lang = GetCompiler(problem["summary_compiler"].get<std::string>());
@@ -561,6 +573,9 @@ bool DealOneSubmission(nlohmann::json&& data) {
   }
   if (sub.summary_type != SummaryType::NONE) {
     Move(tempdir.SummaryPath(), SubmissionSummaryCode(sub.submission_internal_id));
+  }
+  if (sub.problem_prog_stages.size()) {
+    Move(tempdir.ProbProgPath(), SubmissionProblemProgCode(sub.submission_internal_id));
   }
   PushSubmission(std::move(sub));
   return true;

@@ -32,6 +32,7 @@ extern TdFileLock td_file_lock;
 //   (potential downside: different version of interlib for each language?)
 fs::path SubmissionCodePath(int id);
 fs::path SubmissionUserCode(int id);
+fs::path SubmissionProblemProgCode(int id);
 fs::path SubmissionJudgeCode(int id);
 fs::path SubmissionSummaryCode(int id);
 fs::path SubmissionInterlibCode(int id);

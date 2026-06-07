@@ -21,6 +21,20 @@ int main(){ puts("0"); })");
   RunAndTeardownSubmission(id);
 }
 
+TEST_F(ExampleProblem, SpecjudgeOldProblemTempdir) {
+  SetUp(2, 3, 2);
+  AssertVerdictReporter reporter(Verdict::AC);
+  sub.reporter = reporter.GetReporter();
+  sub.judge_between_stages = true;
+  long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
+int main(){ puts("what"); })", SpecjudgeType::SPECJUDGE_OLD, R"(#include <cstdio>
+#include <fstream>
+int main(){
+  if (std::ofstream(getenv("TMPDIR") + std::string("/test.txt")) << '\n') puts("0");
+})");
+  RunAndTeardownSubmission(id);
+}
+
 TEST_F(ExampleProblem, SpecjudgeOldSetResult) {
   SetUp(2, 3, 2);
   AssertVerdictReporter reporter(Verdict::TLE);
@@ -107,10 +121,11 @@ int main(int argc, char**argv){
   std::ifstream fin(argv[1]); nlohmann::json data; fin >> data;
   int stage = data["current_stage"].get<int>();
   if (stage == 2) {
-    int a, b;
+    int a = 0, b = 0, c = 0;
     std::ifstream(data["user_output_file"].get<std::string>()) >> a;
     std::ifstream(data["answer_file"].get<std::string>()) >> b;
-    if (a-stage-1 == b) {
+    std::ifstream(data["tempdir"].get<std::string>() + "/test.txt") >> c;
+    if (a-stage-1 == b && c == 123) {
       std::cout << nlohmann::json{{"verdict", "AC"}};
     }
   } else {
@@ -118,6 +133,9 @@ int main(int argc, char**argv){
     std::ifstream(data["user_output_file"].get<std::string>()) >> a;
     std::ofstream(data["user_output_file"].get<std::string>()) << (a - stage-1);
     if (stage == 1) std::cout << nlohmann::json{{"verdict", ""}};
+    if (stage == 0) {
+      std::ofstream(data["tempdir"].get<std::string>() + "/test.txt") << "123\n";
+    }
   }
 }
 )");
@@ -300,5 +318,51 @@ TEST_F(ExampleProblem, SummaryCustom) {
   long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
 int main(){})", SpecjudgeType::NORMAL, "", SummaryType::CUSTOM, R"(#include <cstdio>
 int main(){ puts("{\"verdict\":\"AC\",\"score\":\"23\",\"total_time_us\":123456,\"ce_message\":\"meow\"}"); })");
+  RunAndTeardownSubmission(id);
+}
+
+TEST_F(ExampleProblem, Hack) {
+  SetUp(1, 1, 1);
+  AssertVerdictReporter reporter(Verdict::AC);
+  sub.reporter = reporter.GetReporter();
+  sub.stages = 2;
+  sub.judge_between_stages = true;
+
+  const std::string user_code = R"(#include <cstdio>
+int main() {
+  printf("42");
+})";
+
+  const std::string hack_code = R"(#include <cstdio>
+int main() {
+  int n;
+  scanf("%d", &n);
+  if (n == 42) return 1; // returns RE
+  return 0;
+})";
+
+  const std::string specjudge_code = R"(#include <iostream>
+#include <fstream>
+#include "nlohmann/json.hpp"
+int main(int argc, char** argv){
+  std::ifstream fin(argv[1]); nlohmann::json data; fin >> data;
+  int current_stage = data["current_stage"].get<int>();
+
+  if (current_stage == 0) {
+    // Do nothing, continue to next stage
+  } else if (current_stage == 1) {
+    if (data["original_verdict"].get<std::string>() == "RE") {
+      std::cout << nlohmann::json{{"verdict", "AC"}};
+    } else {
+      std::cout << nlohmann::json{{"verdict", "WA"}, {"message", "Hack failed: program did not crash."}};
+    }
+  }
+})";
+
+  long id = SetupSubmission(sub, 1, Compiler::GCC_CPP_17, kTime, false,
+                           user_code,
+                           SpecjudgeType::SPECJUDGE_NEW, specjudge_code,
+                           SummaryType::NONE, "",
+                           hack_code);
   RunAndTeardownSubmission(id);
 }

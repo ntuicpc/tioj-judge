@@ -2,9 +2,8 @@
 #define TIOJ_PATHS_H_
 
 #include <tioj/paths.h>
-
-#include "tasks.h"
-#include "submission.h"
+#include <tioj/tasks.h>
+#include <tioj/submission.h>
 
 extern const char kWorkdirRelative[];
 fs::path Workdir(fs::path&&);
@@ -36,6 +35,7 @@ fs::path ScoringBoxTdInput(long id, int td, int stage, bool inside_box = false);
 fs::path ScoringBoxTdOutput(long id, int td, int stage, bool inside_box = false);
 fs::path ScoringBoxMetaFile(long id, int td, int stage, bool inside_box = false);
 fs::path ScoringBoxOutput(long id, int td, int stage, bool inside_box = false);
+fs::path ScoringBoxTempdir(long id, int td, int stage, bool inside_box = false);
 fs::path SummaryBoxPath(long id);
 fs::path SummaryBoxProgram(long id, Compiler lang, bool inside_box = false);
 fs::path SummaryBoxUserCode(long id, Compiler lang, bool inside_box = false);

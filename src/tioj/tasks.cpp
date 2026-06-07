@@ -1,13 +1,11 @@
 #include "tasks.h"
 
 #include <fcntl.h>
-#include <signal.h>
 #include <unistd.h>
 #include <wordexp.h>
 #include <sys/wait.h>
 #include <sys/sysinfo.h>
 #include <map>
-#include <numeric>
 #include <unordered_map>
 
 #include <spdlog/spdlog.h>
@@ -51,6 +49,7 @@ std::vector<std::string> ExecuteCommand(Compiler lang, const std::string& progra
     case Compiler::GCC_C_99: [[fallthrough]];
     case Compiler::GCC_C_11: [[fallthrough]];
     case Compiler::GCC_C_17: [[fallthrough]];
+    case Compiler::RUSTC_RUST_2021: [[fallthrough]];
     case Compiler::HASKELL: return {program};
     case Compiler::PYTHON2: return {"/usr/bin/env", "python2", program};
     case Compiler::PYTHON3: return {"/usr/bin/env", "python3", program};
@@ -59,9 +58,39 @@ std::vector<std::string> ExecuteCommand(Compiler lang, const std::string& progra
   __builtin_unreachable();
 }
 
+std::vector<std::string> ParseCommandLine(const std::string& cmdline, const std::string& input, const std::string& output) {
+  std::vector<std::string> result;
+  if (cmdline.size()) {
+    setenv("INPUT", input.c_str(), 1);
+    setenv("OUTPUT", output.c_str(), 1);
+    if (wordexp_t args; wordexp(cmdline.c_str(), &args, WRDE_NOCMD) == 0) {
+      for (size_t i = 0; i < args.we_wordc; i++) result.push_back(args.we_wordv[i]);
+      wordfree(&args);
+    }
+    unsetenv("INPUT");
+    unsetenv("OUTPUT");
+  }
+  return result;
+}
+
+std::vector<std::string> ParseAdditionalArgs(
+    CompileSubtask task, const Submission& sub, const std::string& input, const std::string& output) {
+  switch (task) {
+    case CompileSubtask::USERPROG:
+      return ParseCommandLine(sub.user_compile_args, input, output);
+    case CompileSubtask::SPECJUDGE:
+      return ParseCommandLine(sub.specjudge_compile_args, input, output);
+    case CompileSubtask::SUMMARY:
+      return {};
+    case CompileSubtask::PROBPROG:
+      return ParseCommandLine(sub.problem_prog_compile_args, input, output);
+  }
+  __builtin_unreachable();
+} 
+
 /// child
 // Invoke sandbox with correct settings
-// Results will be parsed in testsuite.cpp
+// Results will be parsed in submission.cpp
 struct cjail_result RunCompile(const SubmissionAndResult& sub_and_result, const Task& task, int uid, int cpuid) {
   const Submission& sub = sub_and_result.sub;
   long id = sub.submission_internal_id;
@@ -81,6 +110,7 @@ struct cjail_result RunCompile(const SubmissionAndResult& sub_and_result, const 
     }
     case CompileSubtask::SPECJUDGE: lang = sub.specjudge_lang; break;
     case CompileSubtask::SUMMARY: lang = sub.summary_lang; break;
+    case CompileSubtask::PROBPROG: lang = sub.problem_prog_lang; break;
     default: __builtin_unreachable();
   }
   std::string input = CompileBoxInput(-1, subtask, lang, true);
@@ -99,6 +129,8 @@ struct cjail_result RunCompile(const SubmissionAndResult& sub_and_result, const 
     case Compiler::GCC_C_11: [[fallthrough]];
     case Compiler::GCC_C_17:
       opt.command = GccCompileCommand(lang, input, interlib, output, sub.sandbox_strict); break;
+    case Compiler::RUSTC_RUST_2021:
+      opt.command = {"/usr/bin/env", "TMPDIR=.", "rustc", input, "-O", "--edition=2021", "-o", output}; break;
     case Compiler::HASKELL: {
       opt.command = {"/usr/bin/env", "ghc", "-w", "-O", "-tmpdir", ".", "-o", output, input};
       if (sub.sandbox_strict) {
@@ -121,18 +153,8 @@ struct cjail_result RunCompile(const SubmissionAndResult& sub_and_result, const 
     }
     default: __builtin_unreachable();
   }
-  if (subtask != CompileSubtask::SUMMARY) { // add custom arguments
-    auto& additional_args = subtask == CompileSubtask::USERPROG ? sub.user_compile_args : sub.specjudge_compile_args;
-    if (additional_args.size()) {
-      setenv("INPUT", input.c_str(), 1);
-      setenv("OUTPUT", output.c_str(), 1);
-      if (wordexp_t args; wordexp(additional_args.c_str(), &args, WRDE_NOCMD) == 0) {
-        for (size_t i = 0; i < args.we_wordc; i++) opt.command.push_back(args.we_wordv[i]);
-        wordfree(&args);
-      }
-      unsetenv("INPUT");
-      unsetenv("OUTPUT");
-    }
+  for (const auto& arg : ParseAdditionalArgs(subtask, sub, input, output)) {
+    opt.command.push_back(arg);
   }
   if (char* path = getenv("PATH")) opt.envs.push_back(std::string("PATH=") + path);
   opt.workdir = Workdir("/");
@@ -161,11 +183,12 @@ struct cjail_result RunExecute(const SubmissionAndResult& sub_and_result, const 
   spdlog::debug("Generating execute settings: id={} subid={}, subtask={} stage={}",
       id, sub.submission_id, subtask, stage);
   auto& lim = sub.testdata[subtask];
-  std::string program = ExecuteBoxProgram(-1, -1, -1, sub.lang, true);
+  const auto lang = sub.problem_prog_stages.count(stage) ? sub.problem_prog_lang : sub.lang;
+  std::string program = ExecuteBoxProgram(-1, -1, -1, lang, true);
 
   SandboxOptions opt;
   opt.boxdir = ExecuteBoxPath(id, subtask, stage);
-  opt.command = ExecuteCommand(sub.lang, program);
+  opt.command = ExecuteCommand(lang, program);
   if (sub.stages > 1) opt.command.push_back(std::to_string(stage));
   opt.workdir = Workdir("/");
   if (cpuid != -1) opt.cpu_set.push_back(cpuid);
@@ -188,8 +211,9 @@ struct cjail_result RunExecute(const SubmissionAndResult& sub_and_result, const 
   opt.fsize = lim.output;
   if (opt.fsize == 0 || opt.fsize > kMaxOutput) opt.fsize = kMaxOutput;
   if (sub.sandbox_strict) {
-    if (sub.lang == Compiler::PYTHON2 || sub.lang == Compiler::PYTHON3) {
+    if (lang == Compiler::PYTHON2 || lang == Compiler::PYTHON3 || lang == Compiler::RUSTC_RUST_2021) {
       // TODO: is it possible to run without /usr/bin and /bin? (maybe copy python executable to workdir)
+      // TODO: make rust static linking in strict mode
       opt.dirs = {"/usr", "/lib", "/lib64", "/etc/alternatives", "/bin"};
     }
     int fd_input = open(ExecuteBoxInput(id, subtask, stage, sub.sandbox_strict).c_str(), O_RDONLY);
@@ -251,7 +275,11 @@ struct cjail_result RunScoring(const SubmissionAndResult& sub_and_result, const 
     }
   }
   opt.workdir = Workdir("/");
-  opt.input = "/dev/null";
+  if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_OLD) {
+    opt.input = ScoringBoxMetaFile(-1, -1, -1, true);
+  } else {
+    opt.input = "/dev/null";
+  }
   opt.output = ScoringBoxOutput(-1, -1, -1, true);
   opt.error = "/dev/null";
   if (cpuid != -1) opt.cpu_set.push_back(cpuid);
@@ -262,6 +290,7 @@ struct cjail_result RunScoring(const SubmissionAndResult& sub_and_result, const 
   opt.proc_num = 10;
   opt.fsize = kMaxOutput;
   opt.dirs = {"/usr", "/var/lib", "/lib", "/lib64", "/etc/alternatives", "/bin"};
+  opt.envs.push_back("TMPDIR=" + ScoringBoxTempdir(-1, -1, -1, true).string());
   opt.FilterDirs();
   return SandboxExec(opt);
 }

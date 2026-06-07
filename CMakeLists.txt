@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10...3.26)
 
 project(tioj_judge VERSION 0.1 LANGUAGES CXX)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(SOVERSION 0)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -154,5 +156,5 @@ if(TIOJ_BUILD_TESTS)
   target_link_libraries(judge-test gtest_main libtioj spdlog::spdlog)
 
   include(GoogleTest)
-  gtest_discover_tests(judge-test)
+  gtest_discover_tests(judge-test DISCOVERY_MODE PRE_TEST)
 endif()

@@ -1,6 +1,7 @@
 #ifndef INCLUDE_TIOJ_SUBMISSION_H_
 #define INCLUDE_TIOJ_SUBMISSION_H_
 
+#include <set>
 #include <string>
 #include <vector>
 #include <filesystem>
@@ -55,6 +56,7 @@ enum class SummaryType {
   X(GCC_C_99, "c99") \
   X(GCC_C_11, "c11") \
   X(GCC_C_17, "c17") \
+  X(RUSTC_RUST_2021, "rust 2021") \
   X(HASKELL, "haskell") \
   X(PYTHON2, "python2") \
   X(PYTHON3, "python3") \
@@ -88,6 +90,7 @@ enum class Verdict {
 #undef X
 };
 
+
 class SubmissionResult;
 
 class Submission {
@@ -110,9 +113,13 @@ class Submission {
   SummaryType summary_type;
   Compiler specjudge_lang;
   Compiler summary_lang;
-  std::string user_compile_args, specjudge_compile_args;
+  Compiler problem_prog_lang;
+  std::string user_compile_args, specjudge_compile_args, problem_prog_compile_args;
   int stages;
+  // in these stages, run the problem program instead of the user program
+  std::set<int> problem_prog_stages;
   bool judge_between_stages;
+  bool judge_abnormally_terminated;
   bool sandbox_strict; // false for backward-compatability
   int process_limit;
   std::vector<std::string> default_scoring_args;
@@ -158,8 +165,10 @@ class Submission {
       summary_type(SummaryType::NONE),
       specjudge_lang(Compiler::GCC_CPP_17),
       summary_lang(Compiler::GCC_CPP_17),
+      problem_prog_lang(Compiler::GCC_CPP_17),
       stages(1),
       judge_between_stages(false),
+      judge_abnormally_terminated(false),
       sandbox_strict(false),
       process_limit(1),
       report_intermediate_stage(false),

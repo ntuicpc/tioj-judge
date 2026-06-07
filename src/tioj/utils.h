@@ -21,7 +21,7 @@ bool SpliceProcess(int read_fd, int write_fd, size_t max_size = std::numeric_lim
 bool MountTmpfs(const fs::path&, long size_kib);
 bool Umount(const fs::path&);
 bool CreateDirs(const fs::path&, fs::perms = fs::perms::unknown);
-bool RemoveAll(const fs::path&);
+bool RemoveAll(const fs::path&, bool ignore_error = false);
 
 // These functions resolve symlinks; Move allows cross-device move
 bool Move(const fs::path& from, const fs::path& to, fs::perms = fs::perms::unknown);

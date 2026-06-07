@@ -32,6 +32,7 @@ inline std::string CodeExtension(Compiler lang) {
     case Compiler::GCC_C_99: [[fallthrough]];
     case Compiler::GCC_C_11: [[fallthrough]];
     case Compiler::GCC_C_17: return ".c";
+    case Compiler::RUSTC_RUST_2021: return ".rs";
     case Compiler::HASKELL: return ".hs";
     case Compiler::PYTHON2: [[fallthrough]];
     case Compiler::PYTHON3: return ".py";
@@ -51,6 +52,7 @@ inline std::string ProgramExtension(Compiler lang) {
     case Compiler::GCC_C_99: [[fallthrough]];
     case Compiler::GCC_C_11: [[fallthrough]];
     case Compiler::GCC_C_17: return "";
+    case Compiler::RUSTC_RUST_2021: return "";
     case Compiler::HASKELL: return "";
     case Compiler::PYTHON2: [[fallthrough]];
     case Compiler::PYTHON3: return ".pyc";
@@ -68,6 +70,8 @@ inline std::string CompileCodeName(CompileSubtask subtask, Compiler lang) {
       return "judge" + extension;
     case CompileSubtask::SUMMARY:
       return "summary" + extension;
+    case CompileSubtask::PROBPROG:
+      return "prob_prog" + extension;
   }
   __builtin_unreachable();
 }
@@ -82,6 +86,8 @@ inline std::string CompileResultName(CompileSubtask subtask, Compiler lang) {
       return "judge" + extension;
     case CompileSubtask::SUMMARY:
       return "summary" + extension;
+    case CompileSubtask::PROBPROG:
+      return "prob_prog" + extension;
   }
   __builtin_unreachable();
 }
@@ -143,6 +149,8 @@ fs::perms ExecuteBoxProgramPerm(Compiler lang, bool strict) {
     case Compiler::GCC_C_11: [[fallthrough]];
     case Compiler::GCC_C_17:
       return fs::perms::owner_all | fs::perms::group_exec | fs::perms::others_exec; // 711
+    case Compiler::RUSTC_RUST_2021:
+      return fs::perms::owner_all | fs::perms::group_exec | fs::perms::others_exec; // 711
     case Compiler::HASKELL:
       return fs::perms::owner_all | fs::perms::group_exec | fs::perms::others_exec; // 711
     case Compiler::PYTHON2: [[fallthrough]];
@@ -202,6 +210,9 @@ fs::path ScoringBoxMetaFile(long id, int td, int stage, bool inside_box) {
 fs::path ScoringBoxOutput(long id, int td, int stage, bool inside_box) {
   return Workdir(BoxRoot(ScoringBoxPath(id, td, stage), inside_box)) / "output";
 }
+fs::path ScoringBoxTempdir(long id, int td, int stage, bool inside_box) {
+  return BoxRoot(ScoringBoxPath(id, td, stage), inside_box) / "tmp";
+}
 
 fs::path SummaryBoxPath(long id) {
   return SubmissionRunPath(id) / "summary";
@@ -240,6 +251,9 @@ fs::path SubmissionCodePath(int id) {
 }
 fs::path SubmissionUserCode(int id) {
   return SubmissionCodePath(id) / "prog";
+}
+fs::path SubmissionProblemProgCode(int id) {
+  return SubmissionCodePath(id) / "prob_prog";
 }
 fs::path SubmissionJudgeCode(int id) {
   return SubmissionCodePath(id) / "judge";

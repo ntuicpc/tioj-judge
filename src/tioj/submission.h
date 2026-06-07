@@ -14,6 +14,7 @@ struct SubmissionAndResult {
 
   nlohmann::json TestdataMeta(int subtask, int stage) const;
   nlohmann::json SummaryMeta() const;
+  std::string TestdataMetaOld(int subtask) const;
 };
 
 #endif  // TIOJ_SUBMISSION_H_

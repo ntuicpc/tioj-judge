@@ -179,14 +179,14 @@ err:
   return false;
 }
 
-bool RemoveAll(const fs::path& path) {
+bool RemoveAll(const fs::path& path, bool ignore_error) {
   spdlog::debug("Delete {}", path.c_str());
   std::error_code ec;
   fs::remove_all(path, ec);
   if (ec) goto err;
   return true;
 err:
-  spdlog::warn("Failed deleting {}: {}", path.c_str(), strerror(ec.value()));
+  if (!ignore_error) spdlog::warn("Failed deleting {}: {}", path.c_str(), strerror(ec.value()));
   return false;
 }
 

@@ -46,7 +46,9 @@ int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
       (SubParam){3, 4, false, Compiler::PYTHON2, "print input()"},
       (SubParam){3, 1, true, Compiler::PYTHON2, "print input()"},
       (SubParam){4, 1, false, Compiler::PYTHON3, "print(input())"},
-      (SubParam){4, 4, true, Compiler::PYTHON3, "import sys; print(sys.stdin.read())"}
+      (SubParam){4, 4, true, Compiler::PYTHON3, "import sys; print(sys.stdin.read())"},
+      (SubParam){5, 1, false, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read}; let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}");)"},
+      (SubParam){5, 4, true, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read}; let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}");)"}
     ),
     ParamName);
 

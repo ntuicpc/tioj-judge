@@ -25,5 +25,9 @@ int main(int argc, char** argv) {
     if (std::string("-v") == argv[1]) log_level = spdlog::level::info;
     if (std::string("-vv") == argv[1]) log_level = spdlog::level::debug;
   }
+  if (geteuid() != 0) {
+    spdlog::error("Tests must be run as root.");
+    return 1;
+  }
   return RUN_ALL_TESTS();
 }

@@ -45,6 +45,8 @@ class SandboxOptions {
   int proc_num;
   int file_num;
   long fsize; // KiB
+  // if the string contains '\0', it is treated as "[source]\0[target]"
+  // to mount read-write, use "[source]\0[target]\0rw"
   std::vector<std::string> dirs;
 
   SandboxOptions() :
