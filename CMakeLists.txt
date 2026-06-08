@@ -135,7 +135,7 @@ add_executable(tioj-judge ${JUDGE_SRC})
 target_compile_definitions(tioj-judge PRIVATE HASKELL_PROCESS_LIMIT=${HASKELL_PROCESS_LIMIT})
 target_link_libraries(
     tioj-judge libtioj spdlog::spdlog tortellini
-    httplib::httplib websocketpp ${OPENSSL_LIBRARIES} zstd
+    httplib::httplib websocketpp ${OPENSSL_LIBRARIES} zstd brotli
     sqlite_orm::sqlite_orm argparse::argparse)
 install(TARGETS tioj-judge DESTINATION bin)
 
