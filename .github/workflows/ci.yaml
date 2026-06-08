@@ -19,7 +19,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get -yqq install git g++ cmake ninja-build \
             libseccomp-dev libnl-genl-3-dev libsqlite3-dev libz-dev libssl-dev \
-            libboost-all-dev libzstd-dev libbrotli-dev \
+            libboost-all-dev libzstd-dev \
             ghc python2 python3 python3-numpy python3-pil rustc
 
       - name: Compile

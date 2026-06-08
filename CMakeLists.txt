@@ -39,6 +39,7 @@ set(CJAIL_BUILD_TESTS OFF)
 set(HTTPLIB_REQUIRE_OPENSSL ON)
 set(HTTPLIB_REQUIRE_ZLIB ON)
 set(HTTPLIB_COMPILE ON)
+set(HTTPLIB_USE_BROTLI_IF_AVAILABLE OFF)
 set(JSON_MultipleHeaders ON)
 set(JSON_Install ON)
 set(BUILD_TESTING OFF) # for tortellini
@@ -87,7 +88,6 @@ endif()
 
 find_package(OpenSSL REQUIRED)
 find_package(zstd REQUIRED)
-find_package(brotli REQUIRED)
 FetchContent_MakeAvailable_Exclude(spdlog ini httplib websocketpp sqlite_orm argparse)
 
 # detect Haskell version
@@ -136,7 +136,7 @@ add_executable(tioj-judge ${JUDGE_SRC})
 target_compile_definitions(tioj-judge PRIVATE HASKELL_PROCESS_LIMIT=${HASKELL_PROCESS_LIMIT})
 target_link_libraries(
     tioj-judge libtioj spdlog::spdlog tortellini
-    httplib::httplib websocketpp ${OPENSSL_LIBRARIES} zstd brotli
+    httplib::httplib websocketpp ${OPENSSL_LIBRARIES} zstd
     sqlite_orm::sqlite_orm argparse::argparse)
 install(TARGETS tioj-judge DESTINATION bin)
 
