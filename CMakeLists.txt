@@ -87,6 +87,7 @@ endif()
 
 find_package(OpenSSL REQUIRED)
 find_package(zstd REQUIRED)
+find_package(brotli REQUIRED)
 FetchContent_MakeAvailable_Exclude(spdlog ini httplib websocketpp sqlite_orm argparse)
 
 # detect Haskell version
