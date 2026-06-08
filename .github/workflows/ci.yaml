@@ -24,10 +24,8 @@ jobs:
 
       - name: Compile
         run: |
-          mkdir build
-          cd build
-          cmake -G Ninja ..
-          ninja
+          cmake -Bbuild -GNinja .
+          cmake --build build
 
       - name: Run tests
         run: |
