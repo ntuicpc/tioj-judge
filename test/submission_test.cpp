@@ -19,6 +19,7 @@ struct SubParam {
 std::string ParamName(const ::testing::TestParamInfo<SubParam>& info) {
   std::string ret = CompilerName(info.param.lang);
   std::replace(ret.begin(), ret.end(), '+', 'p');
+  std::replace(ret.begin(), ret.end(), ' ', '_');
   if (info.param.is_strict) ret += "_strict";
   if (info.param.parallel > 1) ret += "_parallel";
   return ret;
@@ -47,8 +48,10 @@ int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
       (SubParam){3, 1, true, Compiler::PYTHON2, "print input()"},
       (SubParam){4, 1, false, Compiler::PYTHON3, "print(input())"},
       (SubParam){4, 4, true, Compiler::PYTHON3, "import sys; print(sys.stdin.read())"},
-      (SubParam){5, 1, false, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read}; let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}");)"},
-      (SubParam){5, 4, true, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read}; let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}");)"}
+      (SubParam){5, 1, false, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read};
+fn main() { let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}"); })"},
+      (SubParam){5, 4, true, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read};
+fn main() { let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}"); })"}
     ),
     ParamName);
 
