@@ -51,7 +51,15 @@ int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
       (SubParam){5, 1, false, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read};
 fn main() { let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}"); })"},
       (SubParam){5, 4, true, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read};
-fn main() { let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}"); })"}
+fn main() { let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}"); })"},
+      (SubParam){6, 1, true, Compiler::GCC_CPP_20, R"(#include <cstdio>
+int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
+      (SubParam){6, 4, true, Compiler::GCC_CPP_20, R"(#include <cstdio>
+int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
+      (SubParam){7, 1, true, Compiler::GCC_CPP_23, R"(#include <cstdio>
+int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
+      (SubParam){7, 4, true, Compiler::GCC_CPP_23, R"(#include <cstdio>
+int main(){ int a; scanf("%d",&a);printf("%d",a); })"}
     ),
     ParamName);
 
