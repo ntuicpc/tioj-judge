@@ -1,35 +1,66 @@
-192a193,196
+191a192,196
+> #include <unordered_set>
+> 
 > #ifdef TIOJ_NEW_SPECJUDGE
 > #include "nlohmann/json.hpp"
 > #endif
-> 
-2388a2393,2396
+2388a2394,2397
 > enum class TIOJMode {
 >   kOld, kNew, kPolygon,
 > } tioj_mode = TIOJMode::kPolygon;
 > 
-3106a3115,3119
+3052a3062,3097
+> const std::unordered_set<std::string> kTIOJVerdicts = {"AC", "WA", "TLE", "MLE", "OLE", "RE", "SIG", "JRE", "EE"};
+> 
+> static void print_tioj_partial(double score, std::string msg) {
+>     if (tioj_mode == TIOJMode::kPolygon) return;
+>     std::string verdict = score < 100 ? "WA" : "AC";
+>     int64_t time_us = -1, vss_kib = -1, rss_kib = -1;
+> 
+>     std::stringstream ss(msg);
+>     std::string msg_word;
+>     while (ss >> msg_word) {
+>         if (msg_word == "SPECJUDGE_OVERRIDE_VERDICT") {
+>             ss >> verdict;
+>         } else if (msg_word == "SPECJUDGE_OVERRIDE_TIME_US") {
+>             ss >> time_us;
+>         } else if (msg_word == "SPECJUDGE_OVERRIDE_VSS_KIB") {
+>             ss >> vss_kib;
+>         } else if (msg_word == "SPECJUDGE_OVERRIDE_RSS_KIB") {
+>             ss >> rss_kib;
+>         }
+>     }
+> 
+>     if (tioj_mode == TIOJMode::kOld) {
+>         printf("0 SPECJUDGE_OVERRIDE_SCORE %lf SPECJUDGE_OVERRIDE_VERDICT %s", score, verdict.c_str());
+>         if (time_us != -1) printf(" SPECJUDGE_OVERRIDE_TIME_US %ld", time_us);
+>         if (vss_kib != -1) printf(" SPECJUDGE_OVERRIDE_VSS_KIB %ld", vss_kib);
+>         if (rss_kib != -1) printf(" SPECJUDGE_OVERRIDE_RSS_KIB %ld", rss_kib);
+>         puts("");
+>     } else if (tioj_mode == TIOJMode::kNew) {
+>         printf(R"({"verdict":"%s","score":%.6lf)", verdict.c_str(), score);
+>         if (time_us != -1) printf(R"(,"time_us":%ld)", time_us);
+>         if (vss_kib != -1) printf(R"(,"vss_kib":%ld)", vss_kib);
+>         if (rss_kib != -1) printf(R"(,"rss_kib":%ld)", rss_kib);
+>         puts("}");
+>     }
+> }
+> 
+3106a3152,3156
 >             if (tioj_mode == TIOJMode::kOld) {
 >                 puts("0");
 >             } else if (tioj_mode == TIOJMode::kNew) {
 >                 puts(R"({"verdict":"AC"})");
 >             }
-3127a3141,3150
->             if (tioj_mode == TIOJMode::kOld) {
->                 printf("0\nSPECJUDGE_OVERRIDE_SCORE %lf\n", __testlib_points);
->                 if (__testlib_points < 100) puts("SPECJUDGE_OVERRIDE_VERDICT WA");
->             } else if (tioj_mode == TIOJMode::kNew) {
->                 if (__testlib_points < 100) {
->                     printf(R"({"verdict":"WA","score":%.6lf})", __testlib_points);
->                 } else {
->                     printf(R"({"score":%.6lf})", __testlib_points);
->                 }
->             }
-3190c3213
+3127a3178
+>             print_tioj_partial(__testlib_points, msg);
+3136a3188
+>                 print_tioj_partial(0.5 * (result - _partially), msg);
+3190c3242
 <     halt(resultExitCode(result));
 ---
 >     halt(tioj_mode == TIOJMode::kPolygon ? resultExitCode(result) : 0);
-4853a4877,4895
+4853a4906,4926
 >     if (argc == 7) {
 >         tioj_mode = TIOJMode::kOld;
 >         inf.init(argv[2], _input);
@@ -41,10 +72,12 @@
 > #ifdef TIOJ_NEW_SPECJUDGE
 >     if (argc == 2 && std::string(argv[1]) != "--help") {
 >         tioj_mode = TIOJMode::kNew;
->         nlohmann::json config(std::ifstream(argv[1]));
+>         nlohmann::json config;
+>         std::ifstream(argv[1]) >> config;
 >         inf.init(config["input_file"].get<std::string>(), _input);
 >         ouf.init(config["user_output_file"].get<std::string>(), _output);
 >         ans.init(config["answer_file"].get<std::string>(), _answer);
+>         return;
 >     }
 > #endif
 > 

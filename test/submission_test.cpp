@@ -39,8 +39,10 @@ TEST_P(ExampleProblemOneSubmission, Sub) {
 INSTANTIATE_TEST_SUITE_P(OneSubmission, ExampleProblemOneSubmission,
     testing::Values(
       (SubParam){1, 1, false, Compiler::GCC_CPP_17, R"(#include <cstdio>
+static_assert(__cplusplus == 201703L, "C++17 required");
 int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
       (SubParam){1, 4, true, Compiler::GCC_CPP_17, R"(#include <cstdio>
+static_assert(__cplusplus == 201703L, "C++17 required");
 int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
       (SubParam){2, 1, false, Compiler::HASKELL, "main = interact $ show . sum . map read . words"},
       (SubParam){2, 1, true, Compiler::HASKELL, "main = interact $ show . sum . map read . words"},
@@ -52,13 +54,17 @@ int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
 fn main() { let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}"); })"},
       (SubParam){5, 4, true, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read};
 fn main() { let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}"); })"},
-      (SubParam){6, 1, true, Compiler::GCC_CPP_20, R"(#include <cstdio>
+      (SubParam){6, 1, false, Compiler::GCC_CPP_20, R"(#include <cstdio>
+static_assert(__cplusplus == 202002L, "C++20 required");
 int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
       (SubParam){6, 4, true, Compiler::GCC_CPP_20, R"(#include <cstdio>
+static_assert(__cplusplus == 202002L, "C++20 required");
 int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
-      (SubParam){7, 1, true, Compiler::GCC_CPP_23, R"(#include <cstdio>
+      (SubParam){7, 1, false, Compiler::GCC_CPP_23, R"(#include <cstdio>
+static_assert(__cplusplus == 202302L, "C++23 required");
 int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
       (SubParam){7, 4, true, Compiler::GCC_CPP_23, R"(#include <cstdio>
+static_assert(__cplusplus == 202302L, "C++23 required");
 int main(){ int a; scanf("%d",&a);printf("%d",a); })"}
     ),
     ParamName);

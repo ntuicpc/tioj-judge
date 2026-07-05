@@ -311,8 +311,14 @@ struct cjail_result RunScoring(const SubmissionAndResult& sub_and_result, const 
   } else {
     opt.input = "/dev/null";
   }
-  opt.output = ScoringBoxOutput(-1, -1, -1, true);
-  opt.error = "/dev/null";
+  if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_POLYGON) {
+    // Polygon outputs to stderr
+    opt.output = "/dev/null";
+    opt.error = ScoringBoxOutput(-1, -1, -1, true);
+  } else {
+    opt.output = ScoringBoxOutput(-1, -1, -1, true);
+    opt.error = "/dev/null";
+  }
   if (cpuid != -1) opt.cpu_set.push_back(cpuid);
   opt.uid = opt.gid = uid;
   opt.wall_time = 60L * 1'000'000;

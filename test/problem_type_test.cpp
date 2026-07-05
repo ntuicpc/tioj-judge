@@ -1,4 +1,5 @@
 #include "example_problem.h"
+#include "tioj/submission.h"
 #include "utils.h"
 
 #include <gtest/gtest-matchers.h>
@@ -50,6 +51,79 @@ int main(){ puts("0 SPECJUDGE_OVERRIDE_VERDICT TLE SPECJUDGE_OVERRIDE_SCORE 1.23
   RunAndTeardownSubmission(id);
 }
 
+static void SetupTestlibTest(ExampleProblem& prob, bool is_tioj, SpecjudgeType specjudge_type) {
+  prob.SetUp(2, 3, 2);
+  AssertVerdictReporter reporter(Verdict::AC);
+  prob.sub.reporter = reporter.GetReporter();
+  std::string include_str = is_tioj ? R"(#include "tioj_testlib.h")" : R"(#include "testlib.h")";
+  long id = SetupSubmission(prob.sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
+int main(){ int a; scanf("%d", &a); printf("%d\n", a * 2); })", specjudge_type, include_str + R"(
+int main(int argc, char** argv){
+  registerTestlibCmd(argc, argv);
+  int pans = ouf.readInt(), jans = ans.readInt();
+  quitf(jans * 2 == pans ? _ok : _wa, "test");
+})");
+  prob.RunAndTeardownSubmission(id);
+}
+
+static void SetupTestlibScoreTest(ExampleProblem& prob, bool is_tioj, SpecjudgeType specjudge_type) {
+  // 4-7 is verdict override test
+  prob.SetUp(2, 8, 2);
+  AssertVerdictReporter reporter(Verdict::TLE, true, false);
+  prob.sub.reporter = reporter.GetReporter();
+  auto orig_score = prob.sub.reporter.ReportScoringResult;
+  prob.sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage){
+    orig_score(sub, res, subtask, stage);
+    Verdict expected_verdict = (subtask & 4) ?
+        Verdict::TLE : (subtask & 1 ? Verdict::WA : Verdict::AC);
+    ASSERT_EQ(res.td_results[subtask].score, subtask & 1 ? 49'500'000 : 100'500'000) << "subtask=" << subtask;
+    ASSERT_EQ(res.td_results[subtask].verdict, expected_verdict) << "subtask=" << subtask;
+  };
+  std::string include_str = is_tioj ? R"(#include "tioj_testlib.h")" : R"(#include "testlib.h")";
+  long id = SetupSubmission(prob.sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
+int main(){})", specjudge_type, include_str + R"(
+int main(int argc, char** argv){
+  registerTestlibCmd(argc, argv);
+  int td = ans.readInt();
+  float score = td & 1 ? 49.5 : 100.5;
+  if (td & 2) quitf(_pc(int(score * 2)), td & 4 ? "test SPECJUDGE_OVERRIDE_VERDICT TLE" : "test");
+  else quitp(score, td & 4 ? "test SPECJUDGE_OVERRIDE_VERDICT TLE" : "test");
+})");
+  prob.RunAndTeardownSubmission(id);
+}
+
+TEST_F(ExampleProblem, SpecjudgeOldTIOJTestlib) {
+  SetupTestlibTest(*this, true, SpecjudgeType::SPECJUDGE_OLD);
+}
+
+TEST_F(ExampleProblem, SpecjudgeOldTIOJTestlibScore) {
+  SetupTestlibScoreTest(*this, true, SpecjudgeType::SPECJUDGE_OLD);
+}
+
+TEST_F(ExampleProblem, SpecjudgeNewTIOJTestlib) {
+  SetupTestlibTest(*this, true, SpecjudgeType::SPECJUDGE_NEW);
+}
+
+TEST_F(ExampleProblem, SpecjudgeNewTIOJTestlibScore) {
+  SetupTestlibScoreTest(*this, true, SpecjudgeType::SPECJUDGE_NEW);
+}
+
+TEST_F(ExampleProblem, SpecjudgePolygonTIOJTestlib) {
+  SetupTestlibTest(*this, true, SpecjudgeType::SPECJUDGE_POLYGON);
+}
+
+TEST_F(ExampleProblem, SpecjudgePolygonTIOJTestlibScore) {
+  SetupTestlibScoreTest(*this, true, SpecjudgeType::SPECJUDGE_POLYGON);
+}
+
+TEST_F(ExampleProblem, SpecjudgePolygonTestlib) {
+  SetupTestlibTest(*this, false, SpecjudgeType::SPECJUDGE_POLYGON);
+}
+
+TEST_F(ExampleProblem, SpecjudgePolygonTestlibScore) {
+  SetupTestlibScoreTest(*this, false, SpecjudgeType::SPECJUDGE_POLYGON);
+}
+
 TEST_F(ExampleProblem, SpecjudgeNewProblemOneSubmission) {
   SetUp(3, 3, 2);
   AssertVerdictReporter reporter(Verdict::AC);
@@ -63,9 +137,7 @@ TEST_F(ExampleProblem, SpecjudgeNewProblemOneSubmission) {
 int main(){ puts("what"); })", SpecjudgeType::SPECJUDGE_NEW, R"(#include <iostream>
 #include "nlohmann/json.hpp"
 int main(){ std::cout << nlohmann::json{{"verdict", "AC"}, {"score", "1.234567"}}; })");
-  PushSubmission(std::move(sub));
-  WorkLoop(false);
-  TeardownSubmission(id);
+  RunAndTeardownSubmission(id);
 }
 
 TEST_F(ExampleProblem, Multistage) {
@@ -76,9 +148,7 @@ TEST_F(ExampleProblem, Multistage) {
   // stage 0 +1, stage 2 -1
   long id = SetupSubmission(sub, 7, Compiler::GCC_CPP_17, kTime, false, R"(#include <cstdio>
 int main(int argc, char** argv){ int a; scanf("%d",&a); printf("%d", a+argv[1][0]-'1'); })");
-  PushSubmission(std::move(sub));
-  WorkLoop(false);
-  TeardownSubmission(id);
+  RunAndTeardownSubmission(id);
 }
 
 TEST_F(ExampleProblem, MultistageTL) {

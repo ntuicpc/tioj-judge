@@ -542,45 +542,52 @@ inline void SetACOrContinue(bool last_stage, SubmissionResult::TestdataResult& t
   } // else: continue (NUL)
 }
 
+inline void ParseSpecjudgeOverrides(
+    std::ifstream& fin, SubmissionResult::TestdataResult& td_result, bool break_on_non_match, bool allow_score) {
+  bool score_overriden = false;
+  std::string cmd;
+  while (fin >> cmd) {
+    if (allow_score && cmd == "SPECJUDGE_OVERRIDE_SCORE") {
+      long double score;
+      if (fin >> score) {
+        td_result.score = NormalizeScore(score);
+        score_overriden = true;
+      }
+    } else if (cmd == "SPECJUDGE_OVERRIDE_VERDICT") {
+      if (fin >> cmd) {
+        td_result.verdict = AbrToVerdict(cmd, true);
+        if (allow_score && !score_overriden && td_result.verdict == Verdict::AC) {
+          td_result.score = 100'000'000;
+        }
+      }
+    } else if (cmd == "SPECJUDGE_OVERRIDE_TIME_US") {
+      long time_us;
+      if (fin >> time_us) {
+        td_result.time = time_us;
+      }
+    } else if (cmd == "SPECJUDGE_OVERRIDE_VSS_KIB") {
+      long vss_kib;
+      if (fin >> vss_kib) {
+        td_result.vss = vss_kib;
+      }
+    } else if (cmd == "SPECJUDGE_OVERRIDE_RSS_KIB") {
+      long rss_kib;
+      if (fin >> rss_kib) {
+        td_result.rss = rss_kib;
+      }
+    } else if (break_on_non_match) {
+      break;
+    }
+  }
+}
+
 void ReadOldSpecjudgeResult(const fs::path& output_path, bool last_stage, SubmissionResult::TestdataResult& td_result) {
   int x;
   std::ifstream fin(output_path);
   bool success = bool(fin >> x); // x would be set to 0 if failed, so this is necessary
   if (success && x == 0) {
     SetACOrContinue(last_stage, td_result);
-    std::string cmd;
-    bool score_overriden = false;
-    while (fin >> cmd) {
-      if (cmd == "SPECJUDGE_OVERRIDE_SCORE") {
-        long double score;
-        if (fin >> score) {
-          td_result.score = NormalizeScore(score);
-          score_overriden = true;
-        }
-      } else if (cmd == "SPECJUDGE_OVERRIDE_VERDICT") {
-        if (fin >> cmd) {
-          td_result.verdict = AbrToVerdict(cmd, true);
-          if (!score_overriden && td_result.verdict == Verdict::AC) td_result.score = 100'000'000;
-        }
-      } else if (cmd == "SPECJUDGE_OVERRIDE_TIME_US") {
-        long time_us;
-        if (fin >> time_us) {
-          td_result.time = time_us;
-        }
-      } else if (cmd == "SPECJUDGE_OVERRIDE_VSS_KIB") {
-        long vss_kib;
-        if (fin >> vss_kib) {
-          td_result.vss = vss_kib;
-        }
-      } else if (cmd == "SPECJUDGE_OVERRIDE_RSS_KIB") {
-        long rss_kib;
-        if (fin >> rss_kib) {
-          td_result.rss = rss_kib;
-        }
-      } else {
-        break;
-      }
-    }
+    ParseSpecjudgeOverrides(fin, td_result, true, true);
   } else {
     td_result.verdict = Verdict::WA;
   }
@@ -641,14 +648,20 @@ void ReadPolygonSpecjudgeResult(int code, const fs::path& output_path, bool last
   }
 
   SetACOrContinue(last_stage, td_result);
+  std::ifstream fin(output_path);
   if (code == 7) {
     long double score = 0;
-    std::ifstream(output_path) >> score;
-    td_result.score = NormalizeScore(score);
+    if (std::string meta; (fin >> meta) && meta == "points") {
+      fin >> score;
+      td_result.score = NormalizeScore(score);
+    } else {
+      td_result.score = 0;
+    }
   } else if (code >= 50) {
     td_result.score = (code - 50) * (100'000'000 / 200);
   }
   if (td_result.score < 100'000'000) td_result.verdict = Verdict::WA;
+  ParseSpecjudgeOverrides(fin, td_result, false, false);
 }
 
 void ReadSpecjudgeResult(const Submission& sub, const siginfo_t& info, bool last_stage,
