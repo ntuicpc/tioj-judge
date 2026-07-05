@@ -49,7 +49,7 @@ inline std::string ProgramExtension(Compiler lang) {
     case Compiler::GCC_CPP_14: [[fallthrough]];
     case Compiler::GCC_CPP_17: [[fallthrough]];
     case Compiler::GCC_CPP_20: [[fallthrough]];
-    case Compiler::GCC_CPP_23: [[fallthough]];
+    case Compiler::GCC_CPP_23: [[fallthrough]];
     case Compiler::GCC_C_90: [[fallthrough]];
     case Compiler::GCC_C_99: [[fallthrough]];
     case Compiler::GCC_C_11: [[fallthrough]];
