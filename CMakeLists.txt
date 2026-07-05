@@ -124,7 +124,7 @@ file(DOWNLOAD "https://raw.githubusercontent.com/nlohmann/json/v3.10.5/single_in
   "${PROJECT_BINARY_DIR}/judge-headers/nlohmann/json.hpp")
 file(DOWNLOAD "https://raw.githubusercontent.com/MikeMirzayanov/testlib/1e4e8a24c79c6bad3becbdb5a332ffc352b7d5dd/testlib.h"
   "${PROJECT_BINARY_DIR}/judge-headers/testlib.h")
-file(DOWNLOAD "https://github.com/Kattis/problemtools/blob/7c38dc1ae059ac3e7cf7308c5590b4fd30a33a50/examples/different/output_validators/different_validator/validate.h"
+file(DOWNLOAD "https://raw.githubusercontent.com/Kattis/problemtools/refs/tags/v1.20260620/examples/different/output_validators/different_validator/validate.h"
   "${PROJECT_BINARY_DIR}/judge-headers/validate.h")
 execute_process(COMMAND
   patch "${PROJECT_BINARY_DIR}/judge-headers/testlib.h"

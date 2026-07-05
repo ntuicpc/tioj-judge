@@ -535,6 +535,8 @@ bool SetupScoring(SubmissionAndResult& sub_and_result, const TaskEntry& task) {
   return true;
 }
 
+constexpr size_t kMaxMessageLen = 32768;
+
 inline void SetACOrContinue(bool last_stage, SubmissionResult::TestdataResult& td_result) {
   if (last_stage) {
     td_result.verdict = Verdict::AC;
@@ -629,10 +631,9 @@ void ReadNewSpecjudgeResult(const fs::path& output_path, SubmissionResult::Testd
     try {
       auto& msg_type = it_type->get_ref<std::string&>();
       if (msg_type == "text" || msg_type == "html") {
-        constexpr size_t kMaxLen = 32768;
         td_result.message_type = std::move(msg_type);
         td_result.message = std::move(it_msg->get_ref<std::string&>());
-        if (td_result.message.size() > kMaxLen) td_result.message.resize(kMaxLen);
+        if (td_result.message.size() > kMaxMessageLen) td_result.message.resize(kMaxMessageLen);
         has_message = true;
       }
     } catch (...) {}
@@ -661,14 +662,51 @@ void ReadPolygonSpecjudgeResult(int code, const fs::path& output_path, bool last
     td_result.score = (code - 50) * (100'000'000 / 200);
   }
   if (td_result.score < 100'000'000) td_result.verdict = Verdict::WA;
-  ParseSpecjudgeOverrides(fin, td_result, false, false);
+  if (fin) ParseSpecjudgeOverrides(fin, td_result, false, false);
+}
+
+void ReadKattisSpecjudgeResult(int code, const fs::path& output_path, const fs::path& user_output_path,
+                               const fs::path& judge_dir, bool last_stage, SubmissionResult::TestdataResult& td_result) {
+  if (code == 42) {
+    SetACOrContinue(last_stage, td_result);
+    if (!last_stage) {
+      fs::path nextpass_path = judge_dir / "nextpass.in";
+      if (fs::is_regular_file(nextpass_path)) {
+        Move(nextpass_path, user_output_path);
+      } else {
+        // no nextpass.in = immediate success
+        td_result.verdict = Verdict::AC;
+      }
+    }
+    if (std::ifstream fin(judge_dir / "score_multiplier.txt"); fin) {
+      long double score_multiplier = 0;
+      if (fin >> score_multiplier) td_result.score = NormalizeScore(score_multiplier * 100);
+    }
+    if (std::ifstream fin(judge_dir / "score.txt"); fin) {
+      long double score = 0;
+      if (fin >> score) td_result.score = NormalizeScore(score);
+    }
+  } else {
+    td_result.verdict = Verdict::WA;
+  }
+  if (std::ifstream fin(judge_dir / "teammessage.txt"); fin) {
+    td_result.message_type = "text";
+    td_result.message.resize(kMaxMessageLen);
+    fin.read(&td_result.message[0], td_result.message.size());
+    td_result.message.resize(fin.gcount());
+  }
+  if (std::ifstream fin(judge_dir / "judgemessage.txt"); fin) {
+    ParseSpecjudgeOverrides(fin, td_result, true, false);
+  }
 }
 
 void ReadSpecjudgeResult(const Submission& sub, const siginfo_t& info, bool last_stage,
-                         const fs::path& output_path, SubmissionResult::TestdataResult& td_result) {
+                         const fs::path& output_path, const fs::path& user_output_path,
+                         const fs::path& tempdir_path, SubmissionResult::TestdataResult& td_result) {
   Verdict jre_verdict = sub.specjudge_re_as_wa ? Verdict::WA : Verdict::JRE;
   if (!fs::is_regular_file(output_path) || info.si_code != CLD_EXITED ||
-      (sub.specjudge_type != SpecjudgeType::SPECJUDGE_POLYGON && info.si_status != 0) ||
+      (sub.specjudge_type != SpecjudgeType::SPECJUDGE_POLYGON &&
+       sub.specjudge_type != SpecjudgeType::SPECJUDGE_KATTIS && info.si_status != 0) ||
       (sub.specjudge_type == SpecjudgeType::SPECJUDGE_POLYGON && info.si_status == 3) ||
       (sub.specjudge_type == SpecjudgeType::SPECJUDGE_KATTIS && info.si_status != 42 && info.si_status != 43)) {
     // specjudge failed unexpectedly
@@ -681,13 +719,7 @@ void ReadSpecjudgeResult(const Submission& sub, const siginfo_t& info, bool last
   } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_POLYGON) {
     ReadPolygonSpecjudgeResult(info.si_status, output_path, last_stage, td_result);
   } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_KATTIS) {
-    if (info.si_status == 42) {
-      SetACOrContinue(last_stage, td_result);
-    } else if (info.si_status == 43) {
-      td_result.verdict = Verdict::WA;
-    } else {
-      if (td_result.verdict == Verdict::NUL) td_result.verdict = jre_verdict;
-    }
+    ReadKattisSpecjudgeResult(info.si_status, output_path, user_output_path, tempdir_path, last_stage, td_result);
   } else { // SPECJUDGE_NEW || NORMAL
     try {
       ReadNewSpecjudgeResult(output_path, td_result);
@@ -707,13 +739,16 @@ void FinalizeScoring(SubmissionAndResult& sub_and_result, const TaskEntry& task,
   int stage = task.task.stage;
   auto& td_result = sub_res.td_results[subtask];
   auto output_path = ScoringBoxOutput(id, subtask, stage);
+  auto user_output_path = ScoringBoxUserOutput(id, subtask, stage);
+  // only used in Kattis
+  auto tempdir_path = ScoringBoxTempdir(id, subtask, stage);
 
   bool last_stage = stage == sub.stages - 1;
   // default: WA or keep verdict (if TLE etc.) for last_stage,
   //          continue otherwise
   td_result.score = 0;
   if (!skipped) {
-    ReadSpecjudgeResult(sub, cjail_res.info, last_stage, output_path, td_result);
+    ReadSpecjudgeResult(sub, cjail_res.info, last_stage, output_path, user_output_path, tempdir_path, td_result);
   }
   if (!last_stage && td_result.verdict != Verdict::NUL) {
     td_result.skip_stage = true;
@@ -728,7 +763,7 @@ void FinalizeScoring(SubmissionAndResult& sub_and_result, const TaskEntry& task,
   // move possibly modified user output back to original position
   // so that it can be read by the next stage
   if (!last_stage && !skipped && !td_result.skip_stage && sub.specjudge_type != SpecjudgeType::SKIP) {
-    Move(ScoringBoxUserOutput(id, subtask, stage), ExecuteBoxFinalOutput(id, subtask, stage));
+    Move(user_output_path, ExecuteBoxFinalOutput(id, subtask, stage));
   }
 
   // remove testdata-related files

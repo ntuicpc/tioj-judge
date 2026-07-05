@@ -10,7 +10,7 @@ constexpr long kTime = 1655000000;
 
 }
 
-TEST_F(ExampleProblem, SpecjudgeOldProblemOneSubmission) {
+TEST_F(ExampleProblem, SpecjudgeOldProblem) {
   SetUp(2, 3, 2);
   AssertVerdictReporter reporter(Verdict::AC);
   sub.reporter = reporter.GetReporter();
@@ -124,7 +124,7 @@ TEST_F(ExampleProblem, SpecjudgePolygonTestlibScore) {
   SetupTestlibScoreTest(*this, false, SpecjudgeType::SPECJUDGE_POLYGON);
 }
 
-TEST_F(ExampleProblem, SpecjudgeNewProblemOneSubmission) {
+TEST_F(ExampleProblem, SpecjudgeNewProblem) {
   SetUp(3, 3, 2);
   AssertVerdictReporter reporter(Verdict::AC);
   sub.reporter = reporter.GetReporter();
@@ -137,6 +137,48 @@ TEST_F(ExampleProblem, SpecjudgeNewProblemOneSubmission) {
 int main(){ puts("what"); })", SpecjudgeType::SPECJUDGE_NEW, R"(#include <iostream>
 #include "nlohmann/json.hpp"
 int main(){ std::cout << nlohmann::json{{"verdict", "AC"}, {"score", "1.234567"}}; })");
+  RunAndTeardownSubmission(id);
+}
+
+TEST_F(ExampleProblem, SpecjudgeKattis) {
+  SetUp(2, 3, 2);
+  AssertVerdictReporter reporter(Verdict::AC);
+  sub.reporter = reporter.GetReporter();
+  long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
+int main(){ int a; scanf("%d", &a); printf("%d\n", a * 2); })", SpecjudgeType::SPECJUDGE_KATTIS, R"(
+#include "validate.h"
+int main(int argc, char** argv){
+  init_io(argc, argv);
+  int pans, jans;
+  author_out >> pans;
+  judge_ans >> jans;
+  if (jans * 2 == pans) accept();
+  else wrong_answer("test");
+})");
+  RunAndTeardownSubmission(id);
+}
+
+TEST_F(ExampleProblem, SpecjudgeKattisScore) {
+  // 2-3 is verdict override test
+  SetUp(2, 4, 2);
+  AssertVerdictReporter reporter(Verdict::TLE, true, false);
+  sub.reporter = reporter.GetReporter();
+  auto orig_score = sub.reporter.ReportScoringResult;
+  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage){
+    orig_score(sub, res, subtask, stage);
+    Verdict expected_verdict = subtask & 2 ? Verdict::TLE : Verdict::AC;
+    ASSERT_EQ(res.td_results[subtask].score, subtask & 1 ? 49'500'000 : 100'500'000) << "subtask=" << subtask;
+    ASSERT_EQ(res.td_results[subtask].verdict, expected_verdict) << "subtask=" << subtask;
+  };
+  long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
+int main(){})", SpecjudgeType::SPECJUDGE_KATTIS, R"(#include "validate.h"
+int main(int argc, char** argv){
+  init_io(argc, argv);
+  int td;
+  judge_ans >> td;
+  if (td & 2) judge_message("SPECJUDGE_OVERRIDE_VERDICT TLE\n");
+  accept_with_score(td & 1 ? 49.5 : 100.5);
+})");
   RunAndTeardownSubmission(id);
 }
 
@@ -190,17 +232,15 @@ int main(int argc, char** argv){ int a; scanf("%d",&a); printf("%d", a+argv[1][0
 int main(int argc, char**argv){
   std::ifstream fin(argv[1]); nlohmann::json data; fin >> data;
   int stage = data["current_stage"].get<int>();
+  int a = 0, b = 0, c = 0;
+  std::ifstream(data["user_output_file"].get<std::string>()) >> a;
   if (stage == 2) {
-    int a = 0, b = 0, c = 0;
-    std::ifstream(data["user_output_file"].get<std::string>()) >> a;
     std::ifstream(data["answer_file"].get<std::string>()) >> b;
     std::ifstream(data["tempdir"].get<std::string>() + "/test.txt") >> c;
     if (a-stage-1 == b && c == 123) {
       std::cout << nlohmann::json{{"verdict", "AC"}};
     }
   } else {
-    int a;
-    std::ifstream(data["user_output_file"].get<std::string>()) >> a;
     std::ofstream(data["user_output_file"].get<std::string>()) << (a - stage-1);
     if (stage == 1) std::cout << nlohmann::json{{"verdict", ""}};
     if (stage == 0) {
@@ -245,14 +285,12 @@ int main(int argc, char** argv){ int a; scanf("%d",&a); printf("%d", a+argv[1][0
 int main(int argc, char**argv){
   std::ifstream fin(argv[1]);
   int stage = std::stoi(std::string(argv[6]));
+  int a, b;
+  std::ifstream(argv[1]) >> a;
   if (stage == 2) {
-    int a, b;
-    std::ifstream(argv[1]) >> a;
     std::ifstream(argv[3]) >> b;
     if (a-stage-1 == b) std::cout << 0;
   } else {
-    int a;
-    std::ifstream(argv[1]) >> a;
     std::ofstream(argv[1]) << (a - stage-1);
     std::cout << 0;
   }
@@ -275,6 +313,36 @@ TEST_F(ExampleProblem, MultistageSpecjudgeOldWA) {
   long id = SetupSubmission(sub, 1, Compiler::GCC_CPP_17, kTime, false, R"(#include <cstdio>
 int main(int argc, char** argv){ int a; scanf("%d",&a); printf("%d", a+argv[1][0]-'0'+1); })",
       SpecjudgeType::SPECJUDGE_OLD, "int main(){}");
+  RunAndTeardownSubmission(id);
+}
+
+TEST_F(ExampleProblem, MultistageKattis) {
+  SetUp(4, 2, 2);
+  AssertVerdictReporter reporter(Verdict::AC);
+  sub.reporter = reporter.GetReporter();
+  sub.stages = 3;
+  sub.judge_between_stages = true;
+  // same as MultistageSpecjudgeNew
+  long id = SetupSubmission(sub, 1, Compiler::GCC_CPP_17, kTime, false, R"(#include <cstdio>
+int main(int argc, char** argv){ int a; scanf("%d",&a); printf("%d", a+argv[1][0]-'0'+1); })",
+      SpecjudgeType::SPECJUDGE_KATTIS, R"(#include "validate.h"
+#include "nlohmann/json.hpp"
+#include <fstream>
+int main(int argc, char** argv){
+  init_io(argc, argv);
+  std::ifstream fin(argv[4]); nlohmann::json data; fin >> data;
+  int stage = data["current_stage"].get<int>();
+  int a, b;
+  author_out >> a;
+  if (stage == 2) {
+    judge_ans >> b;
+    if (a-stage-1 == b) accept();
+  } else {
+    std::ofstream(std::string(argv[3]) + "/nextpass.in") << (a - stage-1);
+    accept();
+  }
+}
+)");
   RunAndTeardownSubmission(id);
 }
 
