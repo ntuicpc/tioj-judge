@@ -1,9 +1,9 @@
 #include "utils.h"
 
 #include <fcntl.h>
-#include <unistd.h>
-#include <sys/wait.h>
 #include <sys/mount.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #include <atomic>
 
 #include <spdlog/spdlog.h>
@@ -14,17 +14,15 @@ std::atomic_long submission_internal_id_seq = 0;
 
 #if __has_include(<linux/close_range.h>)
 #include <linux/close_range.h>
-int CloseFrom(int minfd) {
-  return close_range(minfd, ~0U, 0);
-}
+int CloseFrom(int minfd) { return close_range(minfd, ~0U, 0); }
 #else
 #include <dirent.h>
 int CloseFrom(int minfd) {
-  DIR *fddir = opendir("/proc/self/fd");
+  DIR* fddir = opendir("/proc/self/fd");
   if (!fddir) goto error;
   {
     int dfd = dirfd(fddir);
-    for (struct dirent *dent; (dent = readdir(fddir));) {
+    for (struct dirent* dent; (dent = readdir(fddir));) {
       if (!strcmp(dent->d_name, ".") || !strcmp(dent->d_name, "..")) continue;
       int fd = strtol(dent->d_name, NULL, 10);
       if (fd >= minfd && fd != dfd) {
@@ -44,9 +42,7 @@ error:
 
 } // namespace
 
-long GetUniqueSubmissionInternalId() {
-  return ++submission_internal_id_seq;
-}
+long GetUniqueSubmissionInternalId() { return ++submission_internal_id_seq; }
 
 #define ENUM_SWITCH_FUNCTION(DEF, typ, mac) \
   DEF(typ param) { \
@@ -65,13 +61,11 @@ ENUM_SWITCH_FUNCTION(const char* VerdictToDesc, Verdict, ENUM_VERDICT_)
 
 static const char* kVerdictAbrTable[] = {
 #define X(name, abr, desc) abr,
-  ENUM_VERDICT_
+    ENUM_VERDICT_
 #undef X
 };
 
-const char* VerdictToAbr(Verdict verdict) {
-  return kVerdictAbrTable[(int)verdict];
-}
+const char* VerdictToAbr(Verdict verdict) { return kVerdictAbrTable[(int)verdict]; }
 
 Verdict AbrToVerdict(const std::string& str, bool runtime_only) {
   for (int i = (int)Verdict::AC; i < (int)Verdict::CE; i++) {
@@ -87,13 +81,11 @@ Verdict AbrToVerdict(const std::string& str, bool runtime_only) {
 
 static const char* kCompilerNameTable[] = {
 #define X(name, abr) abr,
-  ENUM_COMPILER_
+    ENUM_COMPILER_
 #undef X
 };
 
-const char* CompilerName(Compiler compiler) {
-  return kCompilerNameTable[(int)compiler];
-}
+const char* CompilerName(Compiler compiler) { return kCompilerNameTable[(int)compiler]; }
 
 Compiler GetCompiler(const std::string& str) {
   for (size_t i = 0; i < sizeof(kCompilerNameTable) / sizeof(kCompilerNameTable[0]); i++) {
@@ -123,9 +115,7 @@ ENUM_SWITCH_FUNCTION(const char* InterlibTypeName, InterlibType, ENUM_INTERLIB_T
 #undef X_RETURN_ARG2
 #undef X_RETURN_ARG3
 
-fs::path InsideBox(const fs::path& box, const fs::path& path) {
-  return "/" / path.lexically_relative(box);
-}
+fs::path InsideBox(const fs::path& box, const fs::path& path) { return "/" / path.lexically_relative(box); }
 
 bool SpliceProcess(int read_fd, int write_fd, size_t max_size) {
   pid_t pid = fork();
@@ -153,8 +143,8 @@ bool SpliceProcess(int read_fd, int write_fd, size_t max_size) {
 
 bool MountTmpfs(const fs::path& path, long size_kib) {
   spdlog::debug("Mount tmpfs on {}, size {}", path.c_str(), size_kib);
-  bool ret = 0 == mount("tmpfs", path.c_str(), "tmpfs", 0,
-                        ("size=" + std::to_string(size_kib) + 'k').c_str());
+  bool ret =
+      0 == mount("tmpfs", path.c_str(), "tmpfs", 0, ("size=" + std::to_string(size_kib) + 'k').c_str());
   if (!ret) spdlog::warn("Failed mounting tmpfs on {}: {}", path.c_str(), strerror(errno));
   return ret;
 }

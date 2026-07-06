@@ -1,20 +1,20 @@
 #include <fcntl.h>
-#include <unistd.h>
 #include <sys/sysinfo.h>
-#include <thread>
-#include <fstream>
+#include <unistd.h>
 #include <filesystem>
+#include <fstream>
+#include <thread>
 
-#include <tortellini.hh>
 #include <spdlog/spdlog.h>
 #include <argparse/argparse.hpp>
+#include <tortellini.hh>
 
 #include <tioj/logger.h>
+#include "cpuset.h"
 #include "paths.h"
+#include "server_io.h"
 #include "tioj/paths.h"
 #include "tioj/submission.h"
-#include "cpuset.h"
-#include "server_io.h"
 
 namespace {
 
@@ -49,31 +49,30 @@ void ParseConfig(const fs::path& conf_path) {
 
 void ParseArgs(int argc, char** argv) {
   int verbosity = 0;
-  argparse::ArgumentParser parser(
-      argc ? argv[0] : "tioj-judge", kVersionCode, argparse::default_arguments::help);
-  parser.add_argument("--version")
-    .default_value(false)
-    .implicit_value(true)
-    .help("Show version and exit");
+  argparse::ArgumentParser parser(argc ? argv[0] : "tioj-judge", kVersionCode,
+                                  argparse::default_arguments::help);
+  parser.add_argument("--version").default_value(false).implicit_value(true).help("Show version and exit");
   parser.add_argument("-c", "--config")
-    .required().default_value(std::string("/etc/tioj-judge.conf"))
-    .help("Path of configuration file");
+      .required()
+      .default_value(std::string("/etc/tioj-judge.conf"))
+      .help("Path of configuration file");
   parser.add_argument("-v", "--verbose")
-    .action([&](const auto &) { ++verbosity; })
-    .append().default_value(false).implicit_value(true).nargs(0)
-    .help("Verbose level");
-  parser.add_argument("-p", "--parallel")
-    .scan<'d', int>()
-    .help("Number of maximum parallel judge tasks");
+      .action([&](const auto&) { ++verbosity; })
+      .append()
+      .default_value(false)
+      .implicit_value(true)
+      .nargs(0)
+      .help("Verbose level");
+  parser.add_argument("-p", "--parallel").scan<'d', int>().help("Number of maximum parallel judge tasks");
   parser.add_argument("-m", "--time-multiplier")
-    .scan<'g', double>()
-    .help("Ratio of real time to indicated time");
+      .scan<'g', double>()
+      .help("Ratio of real time to indicated time");
   parser.add_argument("--no-lock")
-    .default_value(false)
-    .implicit_value(true)
-    .help("Not check for other running instances");
+      .default_value(false)
+      .implicit_value(true)
+      .help("Not check for other running instances");
   parser.add_argument("--pinned-cpus")
-    .help("Comma-separated list of CPUs to pin or simply \"all\" or \"none\"");
+      .help("Comma-separated list of CPUs to pin or simply \"all\" or \"none\"");
 
   try {
     parser.parse_args(argc, argv);

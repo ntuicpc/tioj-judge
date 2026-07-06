@@ -1,18 +1,20 @@
-#include <cmath>
 #include <clocale>
+#include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <iomanip>
-#include <sstream>
 #include <iostream>
-#include <filesystem>
 #include <nlohmann/json.hpp>
+#include <sstream>
 
 static bool verbose = false;
 static std::stringstream message;
 
 inline void EOFMessage(bool ans_eof, size_t line, size_t user_lines) {
-  if (ans_eof) message << "Unexpected line " << line;
-  else message << "Unexpected EOF after line " << user_lines;
+  if (ans_eof)
+    message << "Unexpected line " << line;
+  else
+    message << "Unexpected EOF after line " << user_lines;
 }
 
 inline void DifferMessage(const std::string& ans, const std::string& usr) {
@@ -34,8 +36,8 @@ inline void DifferMessage(const std::string& ans, const std::string& usr) {
   }
 }
 
-bool LineCompare(std::ifstream& f_ans, std::ifstream& f_usr,
-                 bool strip_tail = true, bool ignore_tail_empty_lines = true) {
+bool LineCompare(std::ifstream& f_ans, std::ifstream& f_usr, bool strip_tail = true,
+                 bool ignore_tail_empty_lines = true) {
   constexpr char kWhites[] = " \n\r\t";
   size_t line = 1;
   for (; f_ans.eof() == f_usr.eof(); line++) {
@@ -87,7 +89,7 @@ bool StrictCompare(std::ifstream& f_ans, std::ifstream& f_usr) {
     if (f_ans.eof() != f_usr.eof() || f_ans.gcount() != f_usr.gcount()) {
       if (verbose) {
         message << "Length differ: expected " << (pos + f_ans.gcount()) << " bytes, got "
-            << (pos + f_usr.gcount()) << " bytes";
+                << (pos + f_usr.gcount()) << " bytes";
       }
       return false;
     }
@@ -95,9 +97,9 @@ bool StrictCompare(std::ifstream& f_ans, std::ifstream& f_usr) {
       if (verbose) {
         long offset = 0;
         for (; buf1[offset] == buf2[offset] && offset < f_ans.gcount(); offset++);
-        message << "Byte " << (pos + offset) << " differ: expected 0x"
-            << std::hex << std::setfill('0') << std::setw(2) << (uint32_t)(uint8_t)buf1[offset] << ", got 0x"
-            << std::setw(2) << (uint32_t)(uint8_t)buf2[offset];
+        message << "Byte " << (pos + offset) << " differ: expected 0x" << std::hex << std::setfill('0')
+                << std::setw(2) << (uint32_t)(uint8_t)buf1[offset] << ", got 0x" << std::setw(2)
+                << (uint32_t)(uint8_t)buf2[offset];
       }
       return false;
     }
@@ -120,8 +122,10 @@ bool WordCompare(std::ifstream& f_ans, std::ifstream& f_usr, Func&& func) {
       i2 = t.find_first_not_of(kWhites, i2);
       if ((i1 == std::string::npos) != (i2 == std::string::npos)) {
         if (verbose) {
-          if (i1 == std::string::npos) message << "Unexpected word: line " << line << ", word " << word;
-          else message << "Unexpected EOL after line " << line << ", word " << word - 1;
+          if (i1 == std::string::npos)
+            message << "Unexpected word: line " << line << ", word " << word;
+          else
+            message << "Unexpected EOL after line " << line << ", word " << word - 1;
         }
         return false;
       }
@@ -186,7 +190,8 @@ int main(int argc, char** argv) {
           try {
             threshold = std::stold(std::string(argv[i + 1]));
             i++;
-          } catch (...) {}
+          } catch (...) {
+          }
         }
       }
     }
@@ -215,16 +220,16 @@ int main(int argc, char** argv) {
     };
     if (subtype == "absolute") {
       res = WordCompare(f_ans, f_usr, check([&](long double ans, long double usr) {
-        return std::fabs(ans - usr) <= threshold;
-      }));
+                          return std::fabs(ans - usr) <= threshold;
+                        }));
     } else if (subtype == "relative") {
       res = WordCompare(f_ans, f_usr, check([&](long double ans, long double usr) {
-        return std::fabs(ans - usr) <= threshold * std::fabs(ans);
-      }));
+                          return std::fabs(ans - usr) <= threshold * std::fabs(ans);
+                        }));
     } else if (subtype == "absolute-relative") {
       res = WordCompare(f_ans, f_usr, check([&](long double ans, long double usr) {
-        return std::fabs(ans - usr) <= threshold * std::max(1.0L, std::fabs(ans));
-      }));
+                          return std::fabs(ans - usr) <= threshold * std::max(1.0L, std::fabs(ans));
+                        }));
     }
     // else: WA
   }

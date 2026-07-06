@@ -12,15 +12,7 @@ inline std::string PadInt(long x, size_t width) {
 
 fs::path kTestdataRoot = fs::path(TIOJ_DATA_DIR);
 
-fs::path TdRoot() {
-  return kTestdataRoot / "testdata";
-}
-fs::path TdPath(int prob) {
-  return TdRoot() / PadInt(prob, 4);
-}
-fs::path TdInput(int prob, int td) {
-  return TdPath(prob) / ("input" + PadInt(td, 3));
-}
-fs::path TdAnswer(int prob, int td) {
-  return TdPath(prob) / ("output" + PadInt(td, 3));
-}
+fs::path TdRoot() { return kTestdataRoot / "testdata"; }
+fs::path TdPath(int prob) { return TdRoot() / PadInt(prob, 4); }
+fs::path TdInput(int prob, int td) { return TdPath(prob) / ("input" + PadInt(td, 3)); }
+fs::path TdAnswer(int prob, int td) { return TdPath(prob) / ("output" + PadInt(td, 3)); }

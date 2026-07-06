@@ -1,8 +1,8 @@
 #include <tioj/logger.h>
 
 #include <pthread.h>
-#include <spdlog/spdlog.h>
 #include <spdlog/sinks/ansicolor_sink.h>
+#include <spdlog/spdlog.h>
 #include <cstdio>
 
 using ansicolor_sink = spdlog::sinks::ansicolor_sink<spdlog::details::console_mutex>;

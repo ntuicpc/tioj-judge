@@ -3,11 +3,11 @@
 
 /// Log HTTP requests
 
+#include <httplib.h>
+#include <spdlog/spdlog.h>
 #include <chrono>
 #include <optional>
 #include <type_traits>
-#include <httplib.h>
-#include <spdlog/spdlog.h>
 
 #define ENUM_METHOD_ \
   X(GET, Get) \
@@ -25,7 +25,9 @@ std::string FormatOneParam(const std::string&);
 std::string FormatOneParam(const httplib::Params&);
 std::string FormatOneParam(const httplib::Headers&);
 template <class T>
-std::string FormatOneParam(const T&) { return "(unknown)"; }
+std::string FormatOneParam(const T&) {
+  return "(unknown)";
+}
 
 std::string FormatParam();
 template <class T, class... U>
@@ -42,7 +44,7 @@ template <typename T, typename... Args> class has_##func { \
  public: \
   static constexpr bool value = decltype(test<T>(0))::value; \
 };
-  ENUM_METHOD_
+ENUM_METHOD_
 #undef X
 
 bool IsSuccess(int code);
@@ -73,15 +75,15 @@ httplib::Result HTTPRequest(httplib::Client& cli, const std::string& endpoint, T
 }
 
 template <class Method, class Func, class... T>
-httplib::Result RequestRetryInit(
-    Func&& init, httplib::Client& cli, const std::string& endpoint, T&&... params) {
+httplib::Result RequestRetryInit(Func&& init, httplib::Client& cli, const std::string& endpoint,
+                                 T&&... params) {
   const int kRetries = 5;
   using namespace std::chrono_literals;
   std::unique_ptr<httplib::Result> last_res;
   for (int i = 0; i < kRetries; i++) {
     init();
-    last_res = std::make_unique<httplib::Result>(
-            HTTPRequest<Method>(cli, endpoint, std::forward<T>(params)...));
+    last_res =
+        std::make_unique<httplib::Result>(HTTPRequest<Method>(cli, endpoint, std::forward<T>(params)...));
     if (IsSuccess(*last_res)) return std::move(*last_res);
     spdlog::debug("Error code={} status={}", (int)last_res->error(), *last_res ? (*last_res)->status : -1);
     std::this_thread::sleep_for(1s);
@@ -92,7 +94,7 @@ httplib::Result RequestRetryInit(
 
 template <class Method, class... T>
 httplib::Result RequestRetry(T&&... params) {
-  return RequestRetryInit<Method>([](){}, std::forward<T>(params)...);
+  return RequestRetryInit<Method>([]() {}, std::forward<T>(params)...);
 }
 
-#endif  // HTTP_UTILS_H_
+#endif // HTTP_UTILS_H_

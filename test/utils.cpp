@@ -1,15 +1,13 @@
 #include "utils.h"
 
-#include <fstream>
-#include <filesystem>
 #include <tioj/paths.h>
+#include <filesystem>
+#include <fstream>
 
-long SetupSubmission(
-    Submission& sub, int id, Compiler lang, long time, bool sandbox_strict, const std::string& code,
-    SpecjudgeType spec_type, const std::string& specjudge_code,
-    SummaryType summary_type, const std::string& summary_code,
-    const std::string& hack_code,
-    int submitter_id) {
+long SetupSubmission(Submission& sub, int id, Compiler lang, long time, bool sandbox_strict,
+                     const std::string& code, SpecjudgeType spec_type, const std::string& specjudge_code,
+                     SummaryType summary_type, const std::string& summary_code,
+                     const std::string& hack_code, int submitter_id) {
   sub.submission_id = id;
   long iid = sub.submission_internal_id = GetUniqueSubmissionInternalId();
   sub.submitter_id = submitter_id;
@@ -45,6 +43,4 @@ long SetupSubmission(
   return iid;
 }
 
-void TeardownSubmission(long id) {
-  fs::remove_all(SubmissionCodePath(id));
-}
+void TeardownSubmission(long id) { fs::remove_all(SubmissionCodePath(id)); }

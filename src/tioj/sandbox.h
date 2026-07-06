@@ -17,11 +17,10 @@ class CJailCtxClass {
   struct jail_mount_list* mnt_list_;
   cpu_set_t cpu_set_;
   struct cjail_ctx ctx_;
+
  public:
   CJailCtxClass() : mnt_list_(mnt_list_new()) {}
-  ~CJailCtxClass() {
-    mnt_list_free(mnt_list_);
-  }
+  ~CJailCtxClass() { mnt_list_free(mnt_list_); }
   struct cjail_ctx& GetCtx() { return ctx_; }
   const struct cjail_ctx& GetCtx() const { return ctx_; }
 
@@ -41,7 +40,7 @@ class SandboxOptions {
   std::vector<int> cpu_set;
   int uid, gid;
   long wall_time, cpu_time; // us
-  long rss, vss; // KiB
+  long rss, vss;            // KiB
   int proc_num;
   int file_num;
   long fsize; // KiB
@@ -49,15 +48,20 @@ class SandboxOptions {
   // to mount read-write, use "[source]\0[target]\0rw"
   std::vector<std::string> dirs;
 
-  SandboxOptions() :
-      preserve_env(false),
-      fd_input(-1), fd_output(-1), fd_error(-1),
-      uid(65534), gid(65534),
-      wall_time(0), cpu_time(0),
-      rss(0), vss(0),
-      proc_num(0),
-      file_num(0),
-      fsize(0) {}
+  SandboxOptions()
+      : preserve_env(false),
+        fd_input(-1),
+        fd_output(-1),
+        fd_error(-1),
+        uid(65534),
+        gid(65534),
+        wall_time(0),
+        cpu_time(0),
+        rss(0),
+        vss(0),
+        proc_num(0),
+        file_num(0),
+        fsize(0) {}
   SandboxOptions(const std::vector<uint8_t>& serial);
 
   void FilterDirs();
@@ -67,4 +71,4 @@ class SandboxOptions {
   CJailCtxClass ToCJailCtx() const;
 };
 
-#endif  // TIOJ_SANDBOX_H_
+#endif // TIOJ_SANDBOX_H_

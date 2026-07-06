@@ -1,8 +1,8 @@
 #include "sandbox.h"
 
 #include <unistd.h>
-#include <cstring>
 #include <algorithm>
+#include <cstring>
 #include <filesystem>
 
 SandboxOptions::SandboxOptions(const std::vector<uint8_t>& vec) {
@@ -48,19 +48,20 @@ SandboxOptions::SandboxOptions(const std::vector<uint8_t>& vec) {
 }
 
 void SandboxOptions::FilterDirs() {
-  dirs.resize(std::remove_if(dirs.begin(), dirs.end(), [](const std::string& path){
-      return !std::filesystem::exists(path); }) - dirs.begin());
+  dirs.resize(std::remove_if(dirs.begin(), dirs.end(),
+                             [](const std::string& path) { return !std::filesystem::exists(path); }) -
+              dirs.begin());
 }
 
 std::vector<uint8_t> SandboxOptions::Serialize() const {
   std::vector<uint8_t> ret;
-  auto AddLenWrite = [&](size_t len, Int r){
+  auto AddLenWrite = [&](size_t len, Int r) {
     Int cur = ret.size();
     ret.resize(cur + len);
     *(Int*)(ret.data() + cur) = r;
   };
   auto PushInt = [&](Int r) { AddLenWrite(sizeof(Int), r); };
-  auto PushString = [&](const std::string& str){
+  auto PushString = [&](const std::string& str) {
     Int cur = ret.size();
     AddLenWrite(str.size() + sizeof(Int), str.size());
     memcpy(ret.data() + (cur + sizeof(Int)), str.c_str(), str.size());

@@ -1,22 +1,23 @@
 #include "tasks.h"
 
 #include <fcntl.h>
+#include <sys/sysinfo.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <wordexp.h>
-#include <sys/wait.h>
-#include <sys/sysinfo.h>
 #include <map>
 #include <unordered_map>
 
 #include <spdlog/spdlog.h>
 #include "paths.h"
-#include "utils.h"
 #include "sandbox_exec.h"
+#include "utils.h"
 
 namespace {
 
-std::vector<std::string> GccCompileCommand(
-    Compiler lang, const std::string& input, const std::string& interlib, const std::string& output, bool is_static) {
+std::vector<std::string> GccCompileCommand(Compiler lang, const std::string& input,
+                                           const std::string& interlib, const std::string& output,
+                                           bool is_static) {
   std::string prog, std;
   switch (lang) {
     case Compiler::GCC_CPP_98: prog = "g++", std = "-std=c++98"; break;
@@ -58,7 +59,8 @@ std::vector<std::string> ExecuteCommand(Compiler lang, const std::string& progra
   __builtin_unreachable();
 }
 
-std::vector<std::string> ParseCommandLine(const std::string& cmdline, const std::string& input, const std::string& output) {
+std::vector<std::string> ParseCommandLine(const std::string& cmdline, const std::string& input,
+                                          const std::string& output) {
   std::vector<std::string> result;
   if (cmdline.size()) {
     setenv("INPUT", input.c_str(), 1);
@@ -73,30 +75,27 @@ std::vector<std::string> ParseCommandLine(const std::string& cmdline, const std:
   return result;
 }
 
-std::vector<std::string> ParseAdditionalArgs(
-    CompileSubtask task, const Submission& sub, const std::string& input, const std::string& output) {
+std::vector<std::string> ParseAdditionalArgs(CompileSubtask task, const Submission& sub,
+                                             const std::string& input, const std::string& output) {
   switch (task) {
-    case CompileSubtask::USERPROG:
-      return ParseCommandLine(sub.user_compile_args, input, output);
-    case CompileSubtask::SPECJUDGE:
-      return ParseCommandLine(sub.specjudge_compile_args, input, output);
-    case CompileSubtask::SUMMARY:
-      return {};
-    case CompileSubtask::PROBPROG:
-      return ParseCommandLine(sub.problem_prog_compile_args, input, output);
+    case CompileSubtask::USERPROG: return ParseCommandLine(sub.user_compile_args, input, output);
+    case CompileSubtask::SPECJUDGE: return ParseCommandLine(sub.specjudge_compile_args, input, output);
+    case CompileSubtask::SUMMARY: return {};
+    case CompileSubtask::PROBPROG: return ParseCommandLine(sub.problem_prog_compile_args, input, output);
   }
   __builtin_unreachable();
-} 
+}
 
 /// child
 // Invoke sandbox with correct settings
 // Results will be parsed in submission.cpp
-struct cjail_result RunCompile(const SubmissionAndResult& sub_and_result, const Task& task, int uid, int cpuid) {
+struct cjail_result RunCompile(const SubmissionAndResult& sub_and_result, const Task& task, int uid,
+                               int cpuid) {
   const Submission& sub = sub_and_result.sub;
   long id = sub.submission_internal_id;
   CompileSubtask subtask = (CompileSubtask)task.subtask;
-  spdlog::debug("Generating compile settings: id={} subid={}, subtask={}",
-                id, sub.submission_id, CompileSubtaskName(subtask));
+  spdlog::debug("Generating compile settings: id={} subid={}, subtask={}", id, sub.submission_id,
+                CompileSubtaskName(subtask));
 
   std::string interlib;
   Compiler lang;
@@ -128,7 +127,8 @@ struct cjail_result RunCompile(const SubmissionAndResult& sub_and_result, const 
     case Compiler::GCC_C_99: [[fallthrough]];
     case Compiler::GCC_C_11: [[fallthrough]];
     case Compiler::GCC_C_17:
-      opt.command = GccCompileCommand(lang, input, interlib, output, sub.sandbox_strict); break;
+      opt.command = GccCompileCommand(lang, input, interlib, output, sub.sandbox_strict);
+      break;
     case Compiler::RUSTC_RUST_2021: {
       opt.command = {"/usr/bin/env", "rustc", input, "-O", "--edition=2021", "-o", output};
       if (sub.sandbox_strict) {
@@ -140,16 +140,16 @@ struct cjail_result RunCompile(const SubmissionAndResult& sub_and_result, const 
     case Compiler::HASKELL: {
       opt.command = {"/usr/bin/env", "ghc", "-w", "-O", "-tmpdir", ".", "-o", output, input};
       if (sub.sandbox_strict) {
-        opt.command.insert(opt.command.end(), {"-static", "-optl-pthread", "-optl-static", "-optl-fuse-ld=bfd"});
+        opt.command.insert(opt.command.end(),
+                           {"-static", "-optl-pthread", "-optl-static", "-optl-fuse-ld=bfd"});
       }
       break;
     }
-    case Compiler::PYTHON2:
-      opt.command = {"/usr/bin/env", "python2", "-m", "py_compile", input}; break;
+    case Compiler::PYTHON2: opt.command = {"/usr/bin/env", "python2", "-m", "py_compile", input}; break;
     case Compiler::PYTHON3: {
       // note: we assume input & output name has no quotes here
-      std::string script = ("import py_compile;py_compile.compile(\'\'\'" +
-                            input + "\'\'\',\'\'\'" + output + "\'\'\')");
+      std::string script =
+          ("import py_compile;py_compile.compile(\'\'\'" + input + "\'\'\',\'\'\'" + output + "\'\'\')");
       opt.command = {"/usr/bin/env", "python3", "-c", script};
       break;
     }
@@ -188,13 +188,14 @@ struct cjail_result RunCompile(const SubmissionAndResult& sub_and_result, const 
 }
 
 // TODO FEATURE(io-interactive): fork & run multiple cjails and merge them into one cjail_result
-struct cjail_result RunExecute(const SubmissionAndResult& sub_and_result, const Task& task, int uid, int cpuid) {
+struct cjail_result RunExecute(const SubmissionAndResult& sub_and_result, const Task& task, int uid,
+                               int cpuid) {
   const Submission& sub = sub_and_result.sub;
   long id = sub.submission_internal_id;
   int subtask = task.subtask;
   int stage = task.stage;
-  spdlog::debug("Generating execute settings: id={} subid={}, subtask={} stage={}",
-      id, sub.submission_id, subtask, stage);
+  spdlog::debug("Generating execute settings: id={} subid={}, subtask={} stage={}", id, sub.submission_id,
+                subtask, stage);
   auto& lim = sub.testdata[subtask];
   const auto lang = sub.problem_prog_stages.count(stage) ? sub.problem_prog_lang : sub.lang;
   std::string program = ExecuteBoxProgram(-1, -1, -1, lang, true);
@@ -229,11 +230,14 @@ struct cjail_result RunExecute(const SubmissionAndResult& sub_and_result, const 
       opt.dirs = {"/usr", "/lib", "/lib64", "/etc/alternatives", "/bin"};
     }
     int fd_input = open(ExecuteBoxInput(id, subtask, stage, sub.sandbox_strict).c_str(), O_RDONLY);
-    int fd_output = open(ExecuteBoxOutput(id, subtask, stage, sub.sandbox_strict).c_str(), O_WRONLY | O_CREAT, 0600);
+    int fd_output =
+        open(ExecuteBoxOutput(id, subtask, stage, sub.sandbox_strict).c_str(), O_WRONLY | O_CREAT, 0600);
     int pipes[2][2];
     if (pipe(pipes[0]) < 0 || !SpliceProcess(fd_input, pipes[0][1]) || close(pipes[0][1]) < 0 ||
-        pipe(pipes[1]) < 0 || !SpliceProcess(pipes[1][0], fd_output, opt.fsize * 1024) || close(pipes[1][0]) < 0) {
-      // after returned, this process will terminate, closing the pipes and cause SpliceProcess' (if any) to exit
+        pipe(pipes[1]) < 0 || !SpliceProcess(pipes[1][0], fd_output, opt.fsize * 1024) ||
+        close(pipes[1][0]) < 0) {
+      // after returned, this process will terminate, closing the pipes and cause SpliceProcess' (if any) to
+      // exit
       goto err;
     }
     close(fd_input), close(fd_output);
@@ -252,7 +256,7 @@ struct cjail_result RunExecute(const SubmissionAndResult& sub_and_result, const 
   opt.FilterDirs();
   // we don't need to close the opened files because the process is about to terminate
   return SandboxExec(opt);
- err:
+err:
   spdlog::warn("SandboxExec error: errno={} {}", errno, strerror(errno));
   struct cjail_result ret;
   ret.oomkill = errno;
@@ -260,12 +264,14 @@ struct cjail_result RunExecute(const SubmissionAndResult& sub_and_result, const 
   return ret;
 }
 
-struct cjail_result RunScoring(const SubmissionAndResult& sub_and_result, const Task& task, int uid, int cpuid) {
+struct cjail_result RunScoring(const SubmissionAndResult& sub_and_result, const Task& task, int uid,
+                               int cpuid) {
   const Submission& sub = sub_and_result.sub;
   long id = sub.submission_internal_id;
   int subtask = task.subtask;
   int stage = task.stage;
-  spdlog::debug("Generating scoring settings: id={} subid={}, subtask={}", id, sub.submission_id, task.subtask);
+  spdlog::debug("Generating scoring settings: id={} subid={}, subtask={}", id, sub.submission_id,
+                task.subtask);
   std::string program = ScoringBoxProgram(-1, -1, -1, sub.specjudge_lang, true);
 
   SandboxOptions opt;
@@ -273,35 +279,38 @@ struct cjail_result RunScoring(const SubmissionAndResult& sub_and_result, const 
   opt.command = ExecuteCommand(sub.specjudge_lang, program);
   if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_OLD) {
     opt.command.insert(opt.command.end(), {
-      ScoringBoxUserOutput(-1, -1, -1, true),
-      ScoringBoxTdInput(-1, -1, -1, true),
-      ScoringBoxTdOutput(-1, -1, -1, true),
-      CompilerName(sub.lang),
-      ScoringBoxUserCode(-1, -1, -1, sub.lang, true),
-      std::to_string(stage),
-    });
+                                              ScoringBoxUserOutput(-1, -1, -1, true),
+                                              ScoringBoxTdInput(-1, -1, -1, true),
+                                              ScoringBoxTdOutput(-1, -1, -1, true),
+                                              CompilerName(sub.lang),
+                                              ScoringBoxUserCode(-1, -1, -1, sub.lang, true),
+                                              std::to_string(stage),
+                                          });
   } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_POLYGON) {
     opt.command.insert(opt.command.end(), {
-      ScoringBoxTdInput(-1, -1, -1, true),
-      ScoringBoxUserOutput(-1, -1, -1, true),
-      ScoringBoxTdOutput(-1, -1, -1, true),
-    });
+                                              ScoringBoxTdInput(-1, -1, -1, true),
+                                              ScoringBoxUserOutput(-1, -1, -1, true),
+                                              ScoringBoxTdOutput(-1, -1, -1, true),
+                                          });
   } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_KATTIS) {
-    opt.command.insert(opt.command.end(), {
-      ScoringBoxTdInput(-1, -1, -1, true),
-      ScoringBoxTdOutput(-1, -1, -1, true),
-      ScoringBoxTempdir(-1, -1, -1, true),
-      // Kattis PPF allows additional arguments, so we use it to pass in metadata
-      ScoringBoxMetaFile(-1, -1, -1, true),
-    });
+    opt.command.insert(opt.command.end(),
+                       {
+                           ScoringBoxTdInput(-1, -1, -1, true),
+                           ScoringBoxTdOutput(-1, -1, -1, true),
+                           ScoringBoxTempdir(-1, -1, -1, true),
+                           // Kattis PPF allows additional arguments, so we use it to pass in metadata
+                           ScoringBoxMetaFile(-1, -1, -1, true),
+                       });
   } else {
     opt.command.push_back(ScoringBoxMetaFile(-1, -1, -1, true));
     if (sub.specjudge_type == SpecjudgeType::NORMAL) {
-      opt.command.insert(opt.command.end(), sub.default_scoring_args.begin(), sub.default_scoring_args.end());
+      opt.command.insert(opt.command.end(), sub.default_scoring_args.begin(),
+                         sub.default_scoring_args.end());
     }
   }
   opt.workdir = Workdir("/");
-  if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_OLD || sub.specjudge_type == SpecjudgeType::SPECJUDGE_POLYGON) {
+  if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_OLD ||
+      sub.specjudge_type == SpecjudgeType::SPECJUDGE_POLYGON) {
     opt.input = ScoringBoxMetaFile(-1, -1, -1, true);
   } else if (sub.specjudge_type == SpecjudgeType::SPECJUDGE_KATTIS) {
     opt.input = ScoringBoxUserOutput(-1, -1, -1, true);
@@ -329,7 +338,8 @@ struct cjail_result RunScoring(const SubmissionAndResult& sub_and_result, const 
   return SandboxExec(opt);
 }
 
-struct cjail_result RunSummary(const SubmissionAndResult& sub_and_result, const Task& task, int uid, int cpuid) {
+struct cjail_result RunSummary(const SubmissionAndResult& sub_and_result, const Task& task, int uid,
+                               int cpuid) {
   const Submission& sub = sub_and_result.sub;
   long id = sub.submission_internal_id;
   spdlog::debug("Generating summary settings: id={} subid={}", id, sub.submission_id);
@@ -361,7 +371,7 @@ std::vector<int> uid_pool, cpuid_pool;
 bool pool_init = false;
 
 fd_set running_fdset;
-std::map<int, std::tuple<int, int, int>> running; // fd -> (pid, uid, cpuid)
+std::map<int, std::tuple<int, int, int>> running;      // fd -> (pid, uid, cpuid)
 std::unordered_map<int, struct cjail_result> finished; // fd -> result
 
 void InitPools() {
@@ -441,7 +451,8 @@ int RunTask(const SubmissionAndResult& sub, const Task& task) {
   running[pipefd[0]] = {pid, uid, cpuid};
   FD_SET(pipefd[0], &running_fdset);
   spdlog::debug("Task type={} subtask={} of {} started, handle={} pid={} uid={} cpuid={}",
-                TaskTypeName(task.type), task.subtask, sub.sub.submission_internal_id, pipefd[0], pid, uid, cpuid);
+                TaskTypeName(task.type), task.subtask, sub.sub.submission_internal_id, pipefd[0], pid, uid,
+                cpuid);
   return pipefd[0];
 }
 

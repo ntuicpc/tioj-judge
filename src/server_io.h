@@ -27,4 +27,4 @@ void SendQueuedSubmissions(bool send_if_empty);
 // It will not return.
 void ServerWorkLoop();
 
-#endif  // SERVER_IO_H_
+#endif // SERVER_IO_H_

@@ -1,9 +1,9 @@
 #include "example_problem.h"
 
-#include <cstdlib>
-#include <string>
-#include <fstream>
 #include <tioj/paths.h>
+#include <cstdlib>
+#include <fstream>
+#include <string>
 
 #include "utils.h"
 
@@ -13,7 +13,8 @@ void ExampleProblem::SetUp(int problem_id_, int td_num, int max_parallel) {
   SetUp(problem_id_, tds, max_parallel);
 }
 
-void ExampleProblem::SetUp(int problem_id_, const std::vector<std::pair<std::string, std::string>>& tds, int max_parallel) {
+void ExampleProblem::SetUp(int problem_id_, const std::vector<std::pair<std::string, std::string>>& tds,
+                           int max_parallel) {
   kMaxParallel = max_parallel;
   {
     char td_path_tmp[256] = "/tmp/td_test_XXXXXX";
@@ -33,9 +34,7 @@ void ExampleProblem::SetUp(int problem_id_, const std::vector<std::pair<std::str
   sub.problem_id = problem_id;
 }
 
-void ExampleProblem::TearDown() {
-  fs::remove_all(td_path);
-}
+void ExampleProblem::TearDown() { fs::remove_all(td_path); }
 
 void ExampleProblem::RunAndTeardownSubmission(long id) {
   PushSubmission(std::move(sub));

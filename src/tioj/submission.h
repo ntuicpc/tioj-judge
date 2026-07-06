@@ -17,4 +17,4 @@ struct SubmissionAndResult {
   std::string TestdataMetaOld(int subtask) const;
 };
 
-#endif  // TIOJ_SUBMISSION_H_
+#endif // TIOJ_SUBMISSION_H_

@@ -4,4 +4,4 @@
 // Call this before any call to judge submissions. Otherwise, the logger may deadlock.
 void InitLogger();
 
-#endif  // INCLUDE_LOGGER_H_
+#endif // INCLUDE_LOGGER_H_

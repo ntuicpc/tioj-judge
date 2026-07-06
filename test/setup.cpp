@@ -10,9 +10,7 @@ class MyEnvironment : public ::testing::Environment {
     spdlog::set_pattern("[%P] %+");
     spdlog::set_level(log_level);
   }
-  void TearDown() override {
-    fs::remove_all(kSubmissionRoot);
-  }
+  void TearDown() override { fs::remove_all(kSubmissionRoot); }
 };
 
 testing::Environment* const my_env = testing::AddGlobalTestEnvironment(new MyEnvironment);

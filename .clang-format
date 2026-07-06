@@ -1,0 +1,11 @@
+---
+Language: Cpp
+BasedOnStyle: Google
+AllowShortEnumsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: true
+ColumnLimit: 108
+DerivePointerAlignment: false
+IncludeBlocks: Preserve
+PointerAlignment: Left
+SkipMacroDefinitionBody: true
+SpacesBeforeTrailingComments: 1

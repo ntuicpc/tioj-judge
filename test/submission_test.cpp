@@ -1,5 +1,5 @@
-#include <algorithm>
 #include <tioj/utils.h>
+#include <algorithm>
 
 #include "example_problem.h"
 #include "utils.h"
@@ -36,31 +36,31 @@ TEST_P(ExampleProblemOneSubmission, Sub) {
   long id = SetupSubmission(sub, param.sub_id, param.lang, kTime, param.is_strict, param.code);
   RunAndTeardownSubmission(id);
 }
-INSTANTIATE_TEST_SUITE_P(OneSubmission, ExampleProblemOneSubmission,
+INSTANTIATE_TEST_SUITE_P(
+    OneSubmission, ExampleProblemOneSubmission,
     testing::Values(
-      (SubParam){1, 1, false, Compiler::GCC_CPP_17, R"(#include <cstdio>
+        (SubParam){1, 1, false, Compiler::GCC_CPP_17, R"(#include <cstdio>
 static_assert(__cplusplus == 201703L, "C++17 required");
 int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
-      (SubParam){1, 4, true, Compiler::GCC_CPP_17, R"(#include <cstdio>
+        (SubParam){1, 4, true, Compiler::GCC_CPP_17, R"(#include <cstdio>
 static_assert(__cplusplus == 201703L, "C++17 required");
 int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
-      (SubParam){2, 1, false, Compiler::HASKELL, "main = interact $ show . sum . map read . words"},
-      (SubParam){2, 1, true, Compiler::HASKELL, "main = interact $ show . sum . map read . words"},
-      (SubParam){3, 4, false, Compiler::PYTHON2, "print input()"},
-      (SubParam){3, 1, true, Compiler::PYTHON2, "print input()"},
-      (SubParam){4, 1, false, Compiler::PYTHON3, "print(input())"},
-      (SubParam){4, 4, true, Compiler::PYTHON3, "import sys; print(sys.stdin.read())"},
-      (SubParam){5, 1, false, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read};
+        (SubParam){2, 1, false, Compiler::HASKELL, "main = interact $ show . sum . map read . words"},
+        (SubParam){2, 1, true, Compiler::HASKELL, "main = interact $ show . sum . map read . words"},
+        (SubParam){3, 4, false, Compiler::PYTHON2, "print input()"},
+        (SubParam){3, 1, true, Compiler::PYTHON2, "print input()"},
+        (SubParam){4, 1, false, Compiler::PYTHON3, "print(input())"},
+        (SubParam){4, 4, true, Compiler::PYTHON3, "import sys; print(sys.stdin.read())"},
+        (SubParam){5, 1, false, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read};
 fn main() { let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}"); })"},
-      (SubParam){5, 4, true, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read};
+        (SubParam){5, 4, true, Compiler::RUSTC_RUST_2021, R"(use std::io::{self, Read};
 fn main() { let mut s = String::new(); let _ = io::stdin().read_to_string(&mut s); println!("{s}"); })"},
-      (SubParam){6, 1, false, Compiler::GCC_CPP_20, R"(#include <cstdio>
+        (SubParam){6, 1, false, Compiler::GCC_CPP_20, R"(#include <cstdio>
 static_assert(__cplusplus == 202002L, "C++20 required");
 int main(){ int a; scanf("%d",&a);printf("%d",a); })"},
-      (SubParam){6, 4, true, Compiler::GCC_CPP_20, R"(#include <cstdio>
+        (SubParam){6, 4, true, Compiler::GCC_CPP_20, R"(#include <cstdio>
 static_assert(__cplusplus == 202002L, "C++20 required");
-int main(){ int a; scanf("%d",&a);printf("%d",a); })"}
-    ),
+int main(){ int a; scanf("%d",&a);printf("%d",a); })"}),
     ParamName);
 
 // TODO: multiple submission rejudge

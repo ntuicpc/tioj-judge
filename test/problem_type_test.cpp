@@ -16,7 +16,8 @@ TEST_F(ExampleProblem, SpecjudgeOldProblem) {
   sub.reporter = reporter.GetReporter();
   sub.judge_between_stages = true;
   long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
-int main(){ puts("what"); })", SpecjudgeType::SPECJUDGE_OLD, R"(#include <cstdio>
+int main(){ puts("what"); })",
+                            SpecjudgeType::SPECJUDGE_OLD, R"(#include <cstdio>
 #include "nlohmann/json.hpp"
 int main(){ puts("0"); })");
   RunAndTeardownSubmission(id);
@@ -28,7 +29,8 @@ TEST_F(ExampleProblem, SpecjudgeOldProblemTempdir) {
   sub.reporter = reporter.GetReporter();
   sub.judge_between_stages = true;
   long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
-int main(){ puts("what"); })", SpecjudgeType::SPECJUDGE_OLD, R"(#include <cstdio>
+int main(){ puts("what"); })",
+                            SpecjudgeType::SPECJUDGE_OLD, R"(#include <cstdio>
 #include <fstream>
 int main(){
   if (std::ofstream(getenv("TMPDIR") + std::string("/test.txt")) << '\n') puts("0");
@@ -41,12 +43,13 @@ TEST_F(ExampleProblem, SpecjudgeOldSetResult) {
   AssertVerdictReporter reporter(Verdict::TLE);
   sub.reporter = reporter.GetReporter();
   auto orig_score = sub.reporter.ReportScoringResult;
-  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage){
+  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage) {
     orig_score(sub, res, subtask, stage);
     ASSERT_EQ(res.td_results[subtask].score, 1234567);
   };
   long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
-int main(){ puts("what"); })", SpecjudgeType::SPECJUDGE_OLD, R"(#include <cstdio>
+int main(){ puts("what"); })",
+                            SpecjudgeType::SPECJUDGE_OLD, R"(#include <cstdio>
 int main(){ puts("0 SPECJUDGE_OVERRIDE_VERDICT TLE SPECJUDGE_OVERRIDE_SCORE 1.234567"); })");
   RunAndTeardownSubmission(id);
 }
@@ -57,7 +60,8 @@ static void SetupTestlibTest(ExampleProblem& prob, bool is_tioj, SpecjudgeType s
   prob.sub.reporter = reporter.GetReporter();
   std::string include_str = is_tioj ? R"(#include "tioj_testlib.h")" : R"(#include "testlib.h")";
   long id = SetupSubmission(prob.sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
-int main(){ int a; scanf("%d", &a); printf("%d\n", a * 2); })", specjudge_type, include_str + R"(
+int main(){ int a; scanf("%d", &a); printf("%d\n", a * 2); })",
+                            specjudge_type, include_str + R"(
 int main(int argc, char** argv){
   registerTestlibCmd(argc, argv);
   int pans = ouf.readInt(), jans = ans.readInt();
@@ -72,16 +76,17 @@ static void SetupTestlibScoreTest(ExampleProblem& prob, bool is_tioj, SpecjudgeT
   AssertVerdictReporter reporter(Verdict::TLE, true, false);
   prob.sub.reporter = reporter.GetReporter();
   auto orig_score = prob.sub.reporter.ReportScoringResult;
-  prob.sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage){
+  prob.sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage) {
     orig_score(sub, res, subtask, stage);
-    Verdict expected_verdict = (subtask & 4) ?
-        Verdict::TLE : (subtask & 1 ? Verdict::WA : Verdict::AC);
-    ASSERT_EQ(res.td_results[subtask].score, subtask & 1 ? 49'500'000 : 100'500'000) << "subtask=" << subtask;
+    Verdict expected_verdict = (subtask & 4) ? Verdict::TLE : (subtask & 1 ? Verdict::WA : Verdict::AC);
+    ASSERT_EQ(res.td_results[subtask].score, subtask & 1 ? 49'500'000 : 100'500'000)
+        << "subtask=" << subtask;
     ASSERT_EQ(res.td_results[subtask].verdict, expected_verdict) << "subtask=" << subtask;
   };
   std::string include_str = is_tioj ? R"(#include "tioj_testlib.h")" : R"(#include "testlib.h")";
   long id = SetupSubmission(prob.sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
-int main(){})", specjudge_type, include_str + R"(
+int main(){})",
+                            specjudge_type, include_str + R"(
 int main(int argc, char** argv){
   registerTestlibCmd(argc, argv);
   int td = ans.readInt();
@@ -129,12 +134,13 @@ TEST_F(ExampleProblem, SpecjudgeNewProblem) {
   AssertVerdictReporter reporter(Verdict::AC);
   sub.reporter = reporter.GetReporter();
   auto orig_score = sub.reporter.ReportScoringResult;
-  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage){
+  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage) {
     orig_score(sub, res, subtask, stage);
     ASSERT_EQ(res.td_results[subtask].score, 1234567);
   };
   long id = SetupSubmission(sub, 6, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
-int main(){ puts("what"); })", SpecjudgeType::SPECJUDGE_NEW, R"(#include <iostream>
+int main(){ puts("what"); })",
+                            SpecjudgeType::SPECJUDGE_NEW, R"(#include <iostream>
 #include "nlohmann/json.hpp"
 int main(){ std::cout << nlohmann::json{{"verdict", "AC"}, {"score", "1.234567"}}; })");
   RunAndTeardownSubmission(id);
@@ -145,7 +151,8 @@ TEST_F(ExampleProblem, SpecjudgeKattis) {
   AssertVerdictReporter reporter(Verdict::AC);
   sub.reporter = reporter.GetReporter();
   long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
-int main(){ int a; scanf("%d", &a); printf("%d\n", a * 2); })", SpecjudgeType::SPECJUDGE_KATTIS, R"(
+int main(){ int a; scanf("%d", &a); printf("%d\n", a * 2); })",
+                            SpecjudgeType::SPECJUDGE_KATTIS, R"(
 #include "validate.h"
 int main(int argc, char** argv){
   init_io(argc, argv);
@@ -164,14 +171,16 @@ TEST_F(ExampleProblem, SpecjudgeKattisScore) {
   AssertVerdictReporter reporter(Verdict::TLE, true, false);
   sub.reporter = reporter.GetReporter();
   auto orig_score = sub.reporter.ReportScoringResult;
-  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage){
+  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage) {
     orig_score(sub, res, subtask, stage);
     Verdict expected_verdict = subtask & 2 ? Verdict::TLE : Verdict::AC;
-    ASSERT_EQ(res.td_results[subtask].score, subtask & 1 ? 49'500'000 : 100'500'000) << "subtask=" << subtask;
+    ASSERT_EQ(res.td_results[subtask].score, subtask & 1 ? 49'500'000 : 100'500'000)
+        << "subtask=" << subtask;
     ASSERT_EQ(res.td_results[subtask].verdict, expected_verdict) << "subtask=" << subtask;
   };
   long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
-int main(){})", SpecjudgeType::SPECJUDGE_KATTIS, R"(#include "validate.h"
+int main(){})",
+                            SpecjudgeType::SPECJUDGE_KATTIS, R"(#include "validate.h"
 int main(int argc, char** argv){
   init_io(argc, argv);
   int td;
@@ -201,7 +210,7 @@ TEST_F(ExampleProblem, MultistageTL) {
   // use 0.6s per stage (TL 1s)
   long id = SetupSubmission(sub, 8, Compiler::GCC_CPP_17, kTime, false, R"(#include <ctime>
 int main(int argc, char** argv){ auto a = clock(); while (clock()-a<0.6*CLOCKS_PER_SEC); })",
-      SpecjudgeType::SPECJUDGE_NEW, R"(#include <iostream>
+                            SpecjudgeType::SPECJUDGE_NEW, R"(#include <iostream>
 #include <fstream>
 #include "nlohmann/json.hpp"
 int main(int argc, char**argv){
@@ -216,7 +225,7 @@ TEST_F(ExampleProblem, MultistageSpecjudgeNew) {
   AssertVerdictReporter reporter(Verdict::AC);
   sub.reporter = reporter.GetReporter();
   auto orig_score = sub.reporter.ReportScoringResult;
-  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage){
+  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage) {
     orig_score(sub, res, subtask, stage);
     ASSERT_EQ(stage, 2); // should run all 3 stages
   };
@@ -226,7 +235,7 @@ TEST_F(ExampleProblem, MultistageSpecjudgeNew) {
   // if output nothing, default to continue
   long id = SetupSubmission(sub, 1, Compiler::GCC_CPP_17, kTime, false, R"(#include <cstdio>
 int main(int argc, char** argv){ int a; scanf("%d",&a); printf("%d", a+argv[1][0]-'0'+1); })",
-      SpecjudgeType::SPECJUDGE_NEW, R"(#include <iostream>
+                            SpecjudgeType::SPECJUDGE_NEW, R"(#include <iostream>
 #include <fstream>
 #include "nlohmann/json.hpp"
 int main(int argc, char**argv){
@@ -259,12 +268,12 @@ TEST_F(ExampleProblem, MultistageSpecjudgeNewSkip) {
   sub.stages = 3;
   sub.judge_between_stages = true;
   auto orig_score = sub.reporter.ReportScoringResult;
-  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage){
+  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage) {
     orig_score(sub, res, subtask, stage);
     ASSERT_EQ(stage, 0); // should run only 1 stage
   };
   long id = SetupSubmission(sub, 1, Compiler::GCC_CPP_17, kTime, false, "int main(){}",
-      SpecjudgeType::SPECJUDGE_NEW, R"(#include <cstdio>
+                            SpecjudgeType::SPECJUDGE_NEW, R"(#include <cstdio>
 int main(){ puts("{\"verdict\":\"AC\"}"); })");
   RunAndTeardownSubmission(id);
 }
@@ -279,7 +288,7 @@ TEST_F(ExampleProblem, MultistageSpecjudgeOld) {
   // if output nothing, default to continue
   long id = SetupSubmission(sub, 1, Compiler::GCC_CPP_17, kTime, false, R"(#include <cstdio>
 int main(int argc, char** argv){ int a; scanf("%d",&a); printf("%d", a+argv[1][0]-'0'+1); })",
-      SpecjudgeType::SPECJUDGE_OLD, R"(#include <iostream>
+                            SpecjudgeType::SPECJUDGE_OLD, R"(#include <iostream>
 #include <fstream>
 #include <string>
 int main(int argc, char**argv){
@@ -306,13 +315,13 @@ TEST_F(ExampleProblem, MultistageSpecjudgeOldWA) {
   sub.stages = 3;
   sub.judge_between_stages = true;
   auto orig_score = sub.reporter.ReportScoringResult;
-  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage){
+  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage) {
     orig_score(sub, res, subtask, stage);
     ASSERT_EQ(stage, 0); // should run only 1 stage
   };
   long id = SetupSubmission(sub, 1, Compiler::GCC_CPP_17, kTime, false, R"(#include <cstdio>
 int main(int argc, char** argv){ int a; scanf("%d",&a); printf("%d", a+argv[1][0]-'0'+1); })",
-      SpecjudgeType::SPECJUDGE_OLD, "int main(){}");
+                            SpecjudgeType::SPECJUDGE_OLD, "int main(){}");
   RunAndTeardownSubmission(id);
 }
 
@@ -325,7 +334,7 @@ TEST_F(ExampleProblem, MultistageKattis) {
   // same as MultistageSpecjudgeNew
   long id = SetupSubmission(sub, 1, Compiler::GCC_CPP_17, kTime, false, R"(#include <cstdio>
 int main(int argc, char** argv){ int a; scanf("%d",&a); printf("%d", a+argv[1][0]-'0'+1); })",
-      SpecjudgeType::SPECJUDGE_KATTIS, R"(#include "validate.h"
+                            SpecjudgeType::SPECJUDGE_KATTIS, R"(#include "validate.h"
 #include "nlohmann/json.hpp"
 #include <fstream>
 int main(int argc, char** argv){
@@ -380,7 +389,7 @@ TEST_F(ExampleProblem, SpecjudgeCompileFlags) {
   sub.reporter = reporter.GetReporter();
   sub.specjudge_compile_args = "-lgmpxx -lgmp";
   long id = SetupSubmission(sub, 1, Compiler::GCC_CPP_17, kTime, true, "int main(){}",
-      SpecjudgeType::SPECJUDGE_OLD, R"(#include <iostream>
+                            SpecjudgeType::SPECJUDGE_OLD, R"(#include <iostream>
 #include <gmpxx.h>
 int main(int argc, char**argv){
   if (argc * 1234567890123456789_mpz == argc * 1234567890123456789_mpz) std::cout << 0_mpz;
@@ -400,12 +409,13 @@ TEST_F(ExampleProblem, SkipGroup) {
   sub.reporter = reporter.GetReporter();
   auto orig_score = sub.reporter.ReportScoringResult;
   int total_results = 0;
-  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage){
+  sub.reporter.ReportScoringResult = [&](auto& sub, auto& res, int subtask, int stage) {
     orig_score(sub, res, subtask, stage);
     total_results++;
   };
   long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
-int main(){ while (true); })", SpecjudgeType::SPECJUDGE_OLD, R"(#include <cstdio>
+int main(){ while (true); })",
+                            SpecjudgeType::SPECJUDGE_OLD, R"(#include <cstdio>
 int main(){ puts("0"); })");
   RunAndTeardownSubmission(id);
   ASSERT_EQ(total_results, 2);
@@ -421,13 +431,14 @@ TEST_F(ExampleProblem, SummaryScore) {
   AssertVerdictReporter reporter(Verdict::AC);
   sub.reporter = reporter.GetReporter();
   auto orig_overall = sub.reporter.ReportOverallResult;
-  sub.reporter.ReportOverallResult = [&](auto& sub, auto& res){
+  sub.reporter.ReportOverallResult = [&](auto& sub, auto& res) {
     orig_overall(sub, res);
     // 10 * 1 + 20 * 0.8 + 30 * 0.7 + 40 * 1 = 87
     ASSERT_EQ(res.total_score, 87'000'000);
   };
   long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
-int main(){})", SpecjudgeType::SPECJUDGE_OLD, R"(#include <fstream>
+int main(){})",
+                            SpecjudgeType::SPECJUDGE_OLD, R"(#include <fstream>
 #include <cstdio>
 int main(int argc, char** argv){
   int td = 0;
@@ -447,14 +458,15 @@ TEST_F(ExampleProblem, SummaryCustom) {
   AssertVerdictReporter reporter(Verdict::AC, true, false);
   sub.reporter = reporter.GetReporter();
   auto orig_overall = sub.reporter.ReportOverallResult;
-  sub.reporter.ReportOverallResult = [&](auto& sub, auto& res){
+  sub.reporter.ReportOverallResult = [&](auto& sub, auto& res) {
     orig_overall(sub, res);
     ASSERT_EQ(res.total_score, 23'000'000);
     ASSERT_EQ(res.total_time, 123456);
     ASSERT_EQ(res.ce_message, "meow");
   };
   long id = SetupSubmission(sub, 5, Compiler::GCC_CPP_17, kTime, true, R"(#include <cstdio>
-int main(){})", SpecjudgeType::NORMAL, "", SummaryType::CUSTOM, R"(#include <cstdio>
+int main(){})",
+                            SpecjudgeType::NORMAL, "", SummaryType::CUSTOM, R"(#include <cstdio>
 int main(){ puts("{\"verdict\":\"AC\",\"score\":\"23\",\"total_time_us\":123456,\"ce_message\":\"meow\"}"); })");
   RunAndTeardownSubmission(id);
 }
@@ -497,10 +509,7 @@ int main(int argc, char** argv){
   }
 })";
 
-  long id = SetupSubmission(sub, 1, Compiler::GCC_CPP_17, kTime, false,
-                           user_code,
-                           SpecjudgeType::SPECJUDGE_NEW, specjudge_code,
-                           SummaryType::NONE, "",
-                           hack_code);
+  long id = SetupSubmission(sub, 1, Compiler::GCC_CPP_17, kTime, false, user_code,
+                            SpecjudgeType::SPECJUDGE_NEW, specjudge_code, SummaryType::NONE, "", hack_code);
   RunAndTeardownSubmission(id);
 }

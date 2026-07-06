@@ -9,10 +9,8 @@ namespace fs = std::filesystem;
 
 #define IGNORE_RETURN(x) { auto _ __attribute__((unused)) = x; }
 
-constexpr fs::perms kPerm666 =
-    fs::perms::owner_read | fs::perms::owner_write |
-    fs::perms::group_read | fs::perms::group_write |
-    fs::perms::others_read | fs::perms::others_write;
+constexpr fs::perms kPerm666 = fs::perms::owner_read | fs::perms::owner_write | fs::perms::group_read |
+                               fs::perms::group_write | fs::perms::others_read | fs::perms::others_write;
 
 fs::path InsideBox(const fs::path& box, const fs::path& path);
 
@@ -27,4 +25,4 @@ bool RemoveAll(const fs::path&, bool ignore_error = false);
 bool Move(const fs::path& from, const fs::path& to, fs::perms = fs::perms::unknown);
 bool Copy(const fs::path& from, const fs::path& to, fs::perms = fs::perms::unknown);
 
-#endif  // TIOJ_UTILS_H_
+#endif // TIOJ_UTILS_H_

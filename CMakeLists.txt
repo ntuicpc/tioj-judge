@@ -163,3 +163,13 @@ if(TIOJ_BUILD_TESTS)
   include(GoogleTest)
   gtest_discover_tests(judge-test DISCOVERY_MODE PRE_TEST)
 endif()
+
+# Formatting
+file(GLOB_RECURSE ALL_SRC RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "*.cpp" "*.h")
+list(FILTER ALL_SRC EXCLUDE REGEX "^libs/")
+list(FILTER ALL_SRC EXCLUDE REGEX "^build/")
+add_custom_target(format
+  COMMAND clang-format -i ${ALL_SRC}
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+  COMMENT "Formatting all source files"
+)

@@ -1,8 +1,8 @@
 #ifndef INCLUDE_TIOJ_PATHS_H_
 #define INCLUDE_TIOJ_PATHS_H_
 
-#include <mutex>
 #include <filesystem>
+#include <mutex>
 #include <unordered_map>
 
 namespace fs = std::filesystem;
@@ -15,11 +15,12 @@ namespace internal {
 // does not meant to be publicly used; only for testing
 extern fs::path kDataDir;
 
-} // internal
+} // namespace internal
 
 class TdFileLock {
   std::mutex global_lock_;
   std::unordered_map<int, std::mutex> mutex_map_;
+
  public:
   std::mutex& operator[](int id);
   // TODO: free mutexes?
@@ -38,4 +39,4 @@ fs::path SubmissionSummaryCode(int id);
 fs::path SubmissionInterlibCode(int id);
 fs::path SubmissionInterlibImplCode(int id);
 
-#endif  // INCLUDE_TIOJ_PATHS_H_
+#endif // INCLUDE_TIOJ_PATHS_H_

@@ -1,7 +1,7 @@
 #include "sandbox_exec.h"
 
-#include <unistd.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #include <spdlog/fmt/bundled/ranges.h>
 #include <spdlog/spdlog.h>
@@ -25,14 +25,13 @@ struct cjail_result SandboxExec(const SandboxOptions& opt) {
     if (execl(cmd.c_str(), cmd.c_str(), nullptr) < 0) _exit(1);
   }
   {
-    spdlog::debug("cjail_exec pid={} childpid={} boxdir={} command={}",
-        getpid(), pid, opt.boxdir, fmt::format("{}", opt.command));
+    spdlog::debug("cjail_exec pid={} childpid={} boxdir={} command={}", getpid(), pid, opt.boxdir,
+                  fmt::format("{}", opt.command));
     close(inpipe[1]);
     close(outpipe[0]);
     auto vec = opt.Serialize();
     long size = vec.size();
-    if (write(outpipe[1], &size, sizeof(size)) < 0 ||
-        write(outpipe[1], vec.data(), vec.size()) < 0 ||
+    if (write(outpipe[1], &size, sizeof(size)) < 0 || write(outpipe[1], vec.data(), vec.size()) < 0 ||
         read(inpipe[0], &ret, sizeof(ret)) < 0) {
       kill(SIGKILL, pid);
       waitpid(pid, nullptr, 0);

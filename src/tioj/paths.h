@@ -2,8 +2,8 @@
 #define TIOJ_PATHS_H_
 
 #include <tioj/paths.h>
-#include <tioj/tasks.h>
 #include <tioj/submission.h>
+#include <tioj/tasks.h>
 
 extern const char kWorkdirRelative[];
 fs::path Workdir(fs::path&&);
@@ -46,4 +46,4 @@ fs::path SummaryBoxOutput(long id, bool inside_box = false);
 fs::path DefaultScoringPath();
 fs::path SpecjudgeHeadersPath();
 
-#endif  // TIOJ_PATHS_H_
+#endif // TIOJ_PATHS_H_

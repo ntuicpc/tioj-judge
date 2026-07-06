@@ -23,4 +23,4 @@ enum class CompileSubtask : int {
 #undef X
 };
 
-#endif  // INCLUDE_TIOJ_TASKS_H_
+#endif // INCLUDE_TIOJ_TASKS_H_

@@ -13,7 +13,8 @@
 // 3. create workdir & input file and assign proper permission
 //   - first mount a tmpfs with proper size (output limit) onto workdir
 //   - for old-style compatility, first mount a tmpfs with proper size (output limit) onto workdir,
-//     set workdir to be writable by uid, and set input/output/error file all inside workdir and writable by uid
+//     set workdir to be writable by uid, and set input/output/error file all inside workdir and writable by
+//     uid
 //   - for strict style:
 //     - don't mount workdir; make nothing inside jail writable by uid,
 //       pre-open input/output file inside a directory not openable by uid
@@ -23,4 +24,4 @@
 //       set workdir to be non-writable by uid and pre-create a file writable by uid for pin output
 struct cjail_result SandboxExec(const SandboxOptions&);
 
-#endif  // TIOJ_SANDBOX_EXEC_H_
+#endif // TIOJ_SANDBOX_EXEC_H_
