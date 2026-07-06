@@ -72,6 +72,8 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/sqlite_orm EXCLUDE_FROM_ALL)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/libs/tortellini EXCLUDE_FROM_ALL)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/websocketpp)
 
+find_library(JITTERENTROPY_LIB NAMES jitterentropy)
+
 # detect Haskell version
 find_program(HASKELL_EXECUTABLE ghc)
 if(HASKELL_EXECUTABLE)
@@ -125,7 +127,10 @@ target_compile_definitions(tioj-judge PRIVATE HASKELL_PROCESS_LIMIT=${HASKELL_PR
 target_link_libraries(
     tioj-judge libtioj spdlog::spdlog tortellini
     httplib::httplib ${OPENSSL_LIBRARIES} zstd
-    sqlite_orm::sqlite_orm argparse::argparse jitterentropy)
+    sqlite_orm::sqlite_orm argparse::argparse)
+if(JITTERENTROPY_LIB)
+  target_link_libraries(tioj-judge jitterentropy)
+endif()
 install(TARGETS tioj-judge DESTINATION bin)
 
 # testing
