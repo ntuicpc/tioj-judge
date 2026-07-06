@@ -1,7 +1,10 @@
 #ifndef DATABASE_H_
 #define DATABASE_H_
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #include <sqlite_orm/sqlite_orm.h>
+#pragma GCC diagnostic pop
 #include "paths.h"
 #include "tioj/utils.h"
 

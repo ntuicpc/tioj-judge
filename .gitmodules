@@ -1,0 +1,24 @@
+[submodule "libs/json"]
+	path = libs/json
+	url = https://github.com/nlohmann/json.git
+[submodule "libs/cjail"]
+	path = libs/cjail
+	url = https://github.com/adrien1018/cjail.git
+[submodule "libs/tortellini"]
+	path = libs/tortellini
+	url = https://github.com/Qix-/tortellini.git
+[submodule "libs/cpp-httplib"]
+	path = libs/cpp-httplib
+	url = https://github.com/yhirose/cpp-httplib.git
+[submodule "libs/websocketpp"]
+	path = libs/websocketpp
+	url = https://github.com/amini-allight/websocketpp.git
+[submodule "libs/sqlite_orm"]
+	path = libs/sqlite_orm
+	url = https://github.com/fnc12/sqlite_orm.git
+[submodule "libs/argparse"]
+	path = libs/argparse
+	url = https://github.com/p-ranav/argparse.git
+[submodule "libs/googletest"]
+	path = libs/googletest
+	url = https://github.com/google/googletest.git

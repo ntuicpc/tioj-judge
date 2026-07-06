@@ -6,9 +6,9 @@ RUN apt install -y git g++ cmake ninja-build libseccomp-dev libnl-genl-3-dev lib
 
 COPY . ./
 
-WORKDIR /judge/build
-RUN cmake -G Ninja ..
-RUN ninja && ninja install
+RUN cmake -B build -G Ninja
+RUN cmake --build build
+RUN cmake --install build
 
 WORKDIR /judge
 
