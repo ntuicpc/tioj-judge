@@ -123,7 +123,7 @@ class Submission {
   std::set<int> problem_prog_stages;
   bool judge_between_stages;
   bool judge_abnormally_terminated;
-  // replace specjudge RE with WA instead of JRE (summary RE are always JRE)
+  // replace specjudge RE with WA instead of JRE (summary RE is always JRE)
   bool specjudge_re_as_wa;
   bool sandbox_strict; // false for backward-compatability
   int process_limit;

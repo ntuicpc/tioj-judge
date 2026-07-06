@@ -462,6 +462,7 @@ bool DealOneSubmission(nlohmann::json&& data) {
       sub.specjudge_compile_args = problem["specjudge_compile_args"].get<std::string>();
       sub.judge_abnormally_terminated = problem.value<bool>(
           "judge_abnormally_terminated", sub.specjudge_type == SpecjudgeType::SPECJUDGE_NEW);
+      sub.specjudge_re_as_wa = problem.value<bool>("judge_re_as_wa", true);
     }
 
     sub.interlib_type = (InterlibType)problem["interlib_type"].get<int>();
